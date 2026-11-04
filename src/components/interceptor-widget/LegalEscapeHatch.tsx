@@ -23,14 +23,13 @@ export function LegalEscapeHatch({
       <div className="text-[10px] text-zinc-500 font-mono mt-1 flex items-center justify-center gap-1">
         <Image
           src="/compliance/ftc-compliant-escape-hatch.png"
-          alt="FTC Compliant"
+          alt="Unhidden Escape Hatch"
           width={12}
           height={12}
           className="object-contain"
         />
-        <span>100% FTC & California AB 390 Compliant (Zero Dark-Patterns)</span>
+        <span>Built without dark patterns: prominent, high-contrast escape hatch</span>
       </div>
     </div>
   );
 }
-

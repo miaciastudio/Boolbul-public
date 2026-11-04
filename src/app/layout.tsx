@@ -8,7 +8,7 @@ export const metadata: Metadata = {
     template: "%s | BoolBul",
   },
   description:
-    "Stop losing MRR. BoolBul is the first native retention interceptor & cancel-deflection modal for Dodo Payments and Stripe. Zero-trust security, 1500ms fail-open guarantee, 45-second setup.",
+    "Stop losing MRR. BoolBul is the dedicated retention interceptor & cancel-deflection modal for Dodo Payments and Stripe. Zero-trust security, 1500ms fail-open guarantee, 45-second setup.",
   keywords: [
     "dodo payments",
     "dodo payments retention",
@@ -44,7 +44,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "BoolBul — Drop Churn, Keep The Cash",
     description:
-      "The first native retention & cancel deflection engine for Dodo Payments. Intercept cancellations with dynamic offers in 45 seconds.",
+      "Dedicated cancellation interceptor & retention engine built for Dodo Payments. Intercept cancellations with dynamic offers in 45 seconds.",
     url: "https://boolbul.com",
     siteName: "BoolBul",
     images: [
@@ -62,7 +62,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "BoolBul — Drop Churn, Keep The Cash",
     description:
-      "The first native retention & churn-buster engine for Dodo Payments. Protect your MRR in 45 seconds.",
+      "Dedicated cancellation interceptor & retention engine built for Dodo Payments. Protect your MRR in 45 seconds.",
     images: ["/banners/stop-churn-banner.png"],
     creator: "@miaciastudio",
   },
@@ -116,7 +116,7 @@ export default function RootLayout({
         url: "https://boolbul.com",
         name: "BoolBul",
         description:
-          "The first native retention & cancel deflection engine for Dodo Payments.",
+          "Dedicated retention interceptor & cancel deflection engine built for Dodo Payments.",
         publisher: {
           "@id": "https://boolbul.com/#organization",
         },

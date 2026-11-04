@@ -177,12 +177,12 @@ export function HeroSection() {
                 <div className="text-[10px] text-zinc-500 font-mono mt-1 flex items-center justify-center gap-1">
                   <Image
                     src="/compliance/ftc-compliant-escape-hatch.png"
-                    alt="FTC Compliant"
+                    alt="Zero Dark Patterns"
                     width={14}
                     height={14}
                     className="object-contain"
                   />
-                  <span>100% FTC & California AB 390 Compliant</span>
+                  <span>Zero dark patterns · High-contrast escape hatch</span>
                 </div>
               </div>
             </div>

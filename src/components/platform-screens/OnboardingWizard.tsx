@@ -24,35 +24,36 @@ export function OnboardingWizard() {
   const samplePublicKey = "bb_pub_c984fd72e10a8b41";
   const sampleSigningSecret = "bb_sec_993fa88c12b4e7230114a";
 
-  const cursorPrompt = `You are integrating BoolBul (boolbul.com) — the Neo-Brutalist retention interceptor for Dodo Payments — into this Next.js App Router codebase.
+  const cursorPrompt = `You are integrating BoolBul (boolbul.com) — the dedicated cancellation interceptor for Dodo Payments & Stripe — into this Next.js App Router codebase.
 
-WORKSPACE CREDENTIALS:
-- BOOLBUL_PUBLIC_KEY: "${samplePublicKey}"
-- BOOLBUL_SIGNING_SECRET: "${sampleSigningSecret}"
-- DODO_PAYMENTS_API_KEY: process.env.DODO_PAYMENTS_API_KEY
+ENVIRONMENT SETUP:
+Add these to your .env.local:
+BOOLBUL_PUBLIC_KEY="${samplePublicKey}"
+BOOLBUL_SIGNING_SECRET="your_signing_secret_here" # Copied from BoolBul Settings (DO NOT paste into AI prompts)
+DODO_PAYMENTS_API_KEY="your_dodo_api_key_here"
 
 EXECUTION PLAN:
 
 1. Create a server-side route at \`app/api/boolbul/claim-offer/route.ts\`:
    - Accept POST requests with \`{ offerToken: string }\`.
-   - Verify the HMAC-SHA256 signature using \`BOOLBUL_SIGNING_SECRET\`.
-   - Decode payload: \`{ subscriptionId, action, payload: { discountCode, pauseDurationDays } }\`.
-   - Call Dodo Payments API using \`DODO_PAYMENTS_API_KEY\`:
-     * If \`action === "APPLY_DISCOUNT"\`: Call \`POST https://api.dodopayments.com/subscriptions/\${subscriptionId}/discount\` with \`{ code: discountCode }\`.
-     * If \`action === "PAUSE_SUBSCRIPTION"\`: Call \`POST https://api.dodopayments.com/subscriptions/\${subscriptionId}/pause\` with \`{ pause_duration: pauseDurationDays }\`.
-   - Return \`{ success: true, message: "Offer applied to subscription" }\` or throw 400 on invalid signature.
+   - Verify the HMAC-SHA256 signature using process.env.BOOLBUL_SIGNING_SECRET.
+   - Decode payload: \`{ subscriptionId, action, payload }\`.
+   - Call Dodo Payments API using process.env.DODO_PAYMENTS_API_KEY:
+     * If \`action === "APPLY_DISCOUNT"\`: Call \`PATCH https://live.dodopayments.com/subscriptions/\${subscriptionId}\` with \`{ discount_code: payload.discountCode }\`.
+     * If \`action === "PAUSE_SUBSCRIPTION"\`: Call \`PATCH https://live.dodopayments.com/subscriptions/\${subscriptionId}\` with \`{ status: "paused", metadata: { pause_duration: payload.pauseDurationDays } }\`.
+   - Return \`{ success: true, message: "Offer applied" }\` or return 400 on invalid signature.
 
 2. Create the client hook at \`hooks/useBoolBul.ts\`:
    - Expose \`openRetentionModal({ customerId, subscriptionId, mrr, onCancelConfirmed, onOfferAccepted })\`.
-   - Wire fail-open logic: If the interceptor fails to load within 1200ms, immediately invoke \`onCancelConfirmed()\` so the customer is never blocked.
+   - Wire 1500ms fail-open SLA: If the interceptor takes >1500ms to load, immediately invoke \`onCancelConfirmed()\` so the user is never trapped.
 
-3. Wrap the existing "Cancel Subscription" button on the billing/settings page:
+3. Wrap the existing "Cancel Subscription" button on your billing page:
    - Intercept the \`onClick\` event.
    - Trigger \`openRetentionModal(...)\`.
-   - If user claims an offer, call \`/api/boolbul/claim-offer\`, toast success ("Discount applied!"), and refresh subscription state.
-   - If user confirms cancellation, proceed with native cancellation.
+   - If user claims an offer, call \`/api/boolbul/claim-offer\`, notify the user, and refresh subscription state.
+   - If user proceeds to cancel, trigger the native cancel handler with zero friction.
 
-Use standard fetch with error handling. Do not alter existing styling outside the cancel trigger button.`;
+Follow clean error handling and maintain existing styling outside the cancel button trigger.`;
 
   const copyToClipboard = (text: string, index: number) => {
     navigator.clipboard.writeText(text);

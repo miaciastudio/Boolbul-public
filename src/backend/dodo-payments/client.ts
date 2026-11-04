@@ -1,16 +1,19 @@
-interface ApplyDiscountParams {
+interface UpdateSubscriptionParams {
   subscriptionId: string;
-  discountCode: string;
+  status?: "active" | "paused" | "cancelled";
+  discountCode?: string;
+  metadata?: Record<string, string>;
 }
 
-interface PauseSubscriptionParams {
+interface ChangePlanParams {
   subscriptionId: string;
-  pauseDurationDays: number;
+  productId: string;
+  discountCode?: string;
 }
 
 const DODO_API_BASE =
   process.env.NEXT_PUBLIC_DODO_ENVIRONMENT === "live_mode"
-    ? "https://api.dodopayments.com"
+    ? "https://live.dodopayments.com"
     : "https://test.dodopayments.com";
 
 export class DodoPaymentsClient {
@@ -39,23 +42,56 @@ export class DodoPaymentsClient {
   }
 
   /**
-   * Apply a discount code to an active subscription
+   * Update subscription properties (e.g. status, metadata, or discount code)
+   * Official Endpoint: PATCH /subscriptions/{id}
    */
-  async applyDiscount({ subscriptionId, discountCode }: ApplyDiscountParams) {
-    return this.request(`/subscriptions/${subscriptionId}/discount`, {
-      method: "POST",
-      body: JSON.stringify({ discount_code: discountCode }),
+  async updateSubscription({
+    subscriptionId,
+    status,
+    discountCode,
+    metadata,
+  }: UpdateSubscriptionParams) {
+    const payload: Record<string, any> = {};
+    if (status) payload.status = status;
+    if (discountCode) payload.discount_code = discountCode;
+    if (metadata) payload.metadata = metadata;
+
+    return this.request(`/subscriptions/${subscriptionId}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
     });
   }
 
   /**
-   * Pause an active subscription
+   * Pause an active subscription using Dodo status mutation
    */
-  async pauseSubscription({ subscriptionId, pauseDurationDays }: PauseSubscriptionParams) {
-    return this.request(`/subscriptions/${subscriptionId}/pause`, {
+  async pauseSubscription(subscriptionId: string, pauseDurationDays: number = 30) {
+    return this.updateSubscription({
+      subscriptionId,
+      status: "paused",
+      metadata: {
+        pause_duration_days: String(pauseDurationDays),
+        paused_by: "boolbul_retention_interceptor",
+        paused_at: new Date().toISOString(),
+      },
+    });
+  }
+
+  /**
+   * Change subscription plan (e.g. downgrade to lower tier or apply rescue tier)
+   * Official Endpoint: POST /subscriptions/{id}/change-plan
+   */
+  async changePlan({
+    subscriptionId,
+    productId,
+    discountCode,
+  }: ChangePlanParams) {
+    return this.request(`/subscriptions/${subscriptionId}/change-plan`, {
       method: "POST",
-      body: JSON.stringify({ pause_duration: pauseDurationDays }),
+      body: JSON.stringify({
+        product_id: productId,
+        ...(discountCode ? { discount_code: discountCode } : {}),
+      }),
     });
   }
 }
-

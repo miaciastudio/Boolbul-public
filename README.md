@@ -1,14 +1,14 @@
 <div align="center">
 
 # 🐦‍🔥 BOOLBUL (`boolbul.com`)
-### *The First Native Retention & Churn-Buster Engine for Dodo Payments.*
+### *The Dedicated Retention & Churn-Buster Engine for Dodo Payments.*
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-red.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![Next.js 14](https://img.shields.io/badge/Next.js-14_App_Router-black?logo=next.js)](https://nextjs.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-Neo--Brutalist-38bdf8?logo=tailwind-css)](https://tailwindcss.com/)
 [![Turso Edge](https://img.shields.io/badge/Turso-LibSQL_Edge-00E599?logo=turso)](https://turso.tech/)
 [![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-F38020?logo=cloudflare)](https://workers.cloudflare.com/)
-[![Dodo Payments](https://img.shields.io/badge/Gateway-Dodo_Payments_Native-CCFF00?color=1D2BFF)](https://dodopayments.com/)
+[![Dodo Payments](https://img.shields.io/badge/Gateway-Dodo_Payments_Dedicated-CCFF00?color=1D2BFF)](https://dodopayments.com/)
 
 **Stop letting subscribers walk out into the cold. Deflect cancellations, freeze churn, and protect your MRR in 45 seconds.**
 
@@ -20,15 +20,15 @@
 
 ## ⚡ The Core Problem
 
-Solo builders, vibe-coders, and indie founders ($500 to $20k MRR) spend months building great software, only to lose **30%–45% of customer lifetime value** because they lack a cancellation deflection flow.
+Solo builders, vibe-coders, and indie founders ($500 to $20k MRR) spend months building great software, only to lose substantial customer lifetime value because they lack an exit-intent retention flow.
 
-While Stripe and Paddle have enterprise tools, **Dodo Payments** (the fastest-growing global/Indian merchant of record) has zero native cancel modals. 
+While legacy enterprise tools cater exclusively to enterprise Stripe tiers, **Dodo Payments** (the rapidly growing merchant of record) has no built-in cancellation deflection flow.
 
 **BoolBul intercepts cancellations the microsecond a subscriber clicks "Cancel":**
 1. **Dynamic Rescue Offers:** Automatically serves 50% discounts or 30-day pauses.
 2. **Zero-Trust Security:** We never touch your secret gateway keys. Our edge worker issues signed HMAC-SHA256 JWTs; your own server mutates Dodo Payments.
 3. **1500ms Fail-Open Guarantee:** If our edge worker or the network hangs, the interceptor silently yields to the host app's native cancel event. Your users are never trapped.
-4. **100% FTC & California AB 390 Compliant:** Unhidden, prominent "Proceed to Cancel" escape hatch on every single modal state. No dark patterns, zero chargeback disputes.
+4. **Zero Dark Patterns:** Unhidden, high-contrast "Proceed to Cancel" escape hatch on every single modal state. Transparent compliance, zero deceptive friction.
 
 ---
 
@@ -65,8 +65,8 @@ sequenceDiagram
         HostApp->>Edge: POST /v1/intercept/claim
         Edge-->>HostApp: Returns HMAC-SHA256 Signed JWT Offer Token
         HostApp->>HostServer: POST /api/boolbul/claim-offer { token }
-        HostServer->>HostServer: Verifies signature with BOOLBUL_SIGNING_SECRET
-        HostServer->>Dodo: POST /subscriptions/{id}/discount (using local DODO_API_KEY)
+        HostServer->>HostServer: Verifies signature with process.env.BOOLBUL_SIGNING_SECRET
+        HostServer->>Dodo: PATCH /subscriptions/{id} (using process.env.DODO_PAYMENTS_API_KEY)
         Dodo-->>HostServer: Subscription Updated
         HostApp->>User: "NOT TODAY 🎉" (+Saved MRR proof)
     else User clicks "Proceed to Cancel" (Escape Hatch)
@@ -79,20 +79,26 @@ sequenceDiagram
 
 ## ⚡ 45-Second Setup (Cursor / Claude)
 
-Copy and paste this prompt directly into your AI terminal:
+Add your credentials to `.env.local`:
+```bash
+NEXT_PUBLIC_BOOLBUL_PUBLIC_KEY="bb_pub_live_..."
+BOOLBUL_SIGNING_SECRET="bb_sec_live_..."
+DODO_PAYMENTS_API_KEY="dodo_api_live_..."
+```
+
+Then copy and paste this prompt directly into your AI terminal:
 
 ```markdown
 Integrate BoolBul retention flow into this Next.js App Router codebase:
 
-CREDENTIALS:
-- BOOLBUL_PUBLIC_KEY: "bb_pub_..."
-- BOOLBUL_SIGNING_SECRET: "bb_sec_..."
-- DODO_PAYMENTS_API_KEY: process.env.DODO_PAYMENTS_API_KEY
+SECURITY:
+- Read NEXT_PUBLIC_BOOLBUL_PUBLIC_KEY from process.env
+- Read BOOLBUL_SIGNING_SECRET and DODO_PAYMENTS_API_KEY server-side ONLY from process.env
 
 STEPS:
-1. Create `app/api/boolbul/claim-offer/route.ts` to verify HMAC-SHA256 token and call Dodo `/subscriptions/${id}/discount`.
-2. Wrap the billing page "Cancel Subscription" button with BoolBul interceptor.
-3. Fail open in 1200ms if network drops.
+1. Create `app/api/boolbul/claim-offer/route.ts` to verify the HMAC-SHA256 signature using BOOLBUL_SIGNING_SECRET and call Dodo Payments API `PATCH /subscriptions/{id}` with the granted discount_code or pause status.
+2. Wrap the billing page "Cancel Subscription" button with the BoolBul interceptor client component.
+3. Enforce a strict 1500ms fail-open timeout so if network drops or the interceptor times out, user cancellation proceeds normally with zero disruption.
 ```
 
 ---
@@ -133,3 +139,4 @@ Open [http://localhost:3000](http://localhost:3000) to view the cockpit.
 <div align="center">
 Built with 🖤 by <a href="https://github.com/miaciastudio">Miacia Studio</a> for the global indie hacker community.
 </div>
+
