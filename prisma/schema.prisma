@@ -1,0 +1,138 @@
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum GatewayProvider {
+  DODO_PAYMENTS
+  STRIPE
+  LEMON_SQUEEZY
+}
+
+enum OfferType {
+  DISCOUNT_PERCENT
+  DISCOUNT_FIXED
+  PAUSE_SUBSCRIPTION
+  FREE_MONTHS
+  FEEDBACK_ROADMAP
+  CUSTOM_URL
+}
+
+enum SessionStatus {
+  INITIALIZED
+  OFFER_PRESENTED
+  OFFER_ACCEPTED
+  CANCEL_CONFIRMED
+  FAILED_OPEN
+}
+
+model Workspace {
+  id                  String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                String           @db.VarChar(100)
+  slug                String           @unique @db.VarChar(50)
+  ownerEmail          String           @map("owner_email")
+  publicKey           String           @unique @default(cuid()) @map("public_key")
+  signingSecret       String           @default(cuid()) @map("signing_secret")
+  primaryGateway      GatewayProvider  @default(DODO_PAYMENTS) @map("primary_gateway")
+  
+  gatewayKeyEncrypted String?          @map("gateway_key_encrypted")
+  webhookSecret       String?          @map("webhook_secret")
+  
+  subscriptionStatus  String           @default("trialing") @map("subscription_status")
+  dodoSubscriptionId  String?          @map("dodo_subscription_id")
+  planTier            String           @default("starter") @map("plan_tier")
+  mrrProtectedLimit   Int              @default(500000) @map("mrr_protected_limit")
+  
+  createdAt           DateTime         @default(now()) @map("created_at")
+  updatedAt           DateTime         @updatedAt @map("updated_at")
+
+  rules               RetentionRule[]
+  sessions            InterceptionSession[]
+  savedRecords        SavedLedger[]
+
+  @@index([publicKey])
+  @@map("workspaces")
+}
+
+model RetentionRule {
+  id            String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspaceId   String        @map("workspace_id") @db.Uuid
+  reasonTrigger String        @map("reason_trigger")
+  offerType     OfferType     @map("offer_type")
+  offerPayload  Json          @map("offer_payload")
+  
+  headline      String        @default("Wait! Before you bounce...")
+  description   String        @default("We have a special deal just for you.")
+  ctaLabel      String        @default("Claim Offer") @map("cta_label")
+  isActive      Boolean       @default(true) @map("is_active")
+  priorityOrder Int           @default(0) @map("priority_order")
+
+  workspace     Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  @@unique([workspaceId, reasonTrigger])
+  @@map("retention_rules")
+}
+
+model InterceptionSession {
+  id               String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspaceId      String          @map("workspace_id") @db.Uuid
+  customerId       String          @map("customer_id")
+  subscriptionId   String          @map("subscription_id")
+  mrrValueCents    Int             @default(0) @map("mrr_value_cents")
+  currency         String          @default("USD") @db.VarChar(3)
+  
+  status           SessionStatus   @default(INITIALIZED)
+  reasonSelected   String?         @map("reason_selected")
+  offerPresentedId String?         @map("offer_presented_id")
+  userFeedback     String?         @map("user_feedback")
+  
+  metadata         Json?           @default("{}")
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
+
+  workspace        Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  savedLedger      SavedLedger?
+
+  @@index([workspaceId, createdAt])
+  @@index([subscriptionId])
+  @@map("interception_sessions")
+}
+
+model SavedLedger {
+  id            String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspaceId   String              @map("workspace_id") @db.Uuid
+  sessionId     String              @unique @map("session_id") @db.Uuid
+  mrrSavedCents Int                 @map("mrr_saved_cents")
+  currency      String              @default("USD") @db.VarChar(3)
+  offerApplied  String              @map("offer_applied")
+  retainedAt    DateTime            @default(now()) @map("retained_at")
+  
+  isStillActive Boolean             @default(true) @map("is_still_active")
+  churnedAt     DateTime?           @map("churned_at")
+
+  workspace     Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  session       InterceptionSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, retainedAt])
+  @@map("saved_ledger")
+}
+
+model DodoWebhookLog {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  eventId   String   @unique @map("event_id")
+  eventType String   @map("event_type")
+  payload   Json
+  status    String   @default("processed")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("dodo_webhook_logs")
+}
+

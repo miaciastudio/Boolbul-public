@@ -1,0 +1,67 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --cobalt: #1D2BFF;
+    --crimson: #E11D24;
+    --cream: #F6F3EC;
+    --blush: #FCE4EC;
+    --lime: #CCFF00;
+    --pitch: #000000;
+  }
+
+  body {
+    background-color: #1D2BFF;
+    color: #000000;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+}
+
+/* Custom Neo-Brutalist Utility Classes */
+@layer utilities {
+  .border-3 {
+    border-width: 3px;
+    border-color: #000000;
+    border-style: solid;
+  }
+  
+  .border-4-black {
+    border-width: 4px;
+    border-color: #000000;
+    border-style: solid;
+  }
+
+  .shadow-brutal-sm {
+    box-shadow: 3px 3px 0px #000000;
+  }
+
+  .shadow-brutal {
+    box-shadow: 4px 4px 0px #000000;
+  }
+
+  .shadow-brutal-lg {
+    box-shadow: 8px 8px 0px #000000;
+  }
+
+  .shadow-brutal-xl {
+    box-shadow: 12px 12px 0px #000000;
+  }
+
+  .btn-depress:active {
+    transform: translate(2px, 2px);
+    box-shadow: 1px 1px 0px #000000;
+  }
+
+  .tape-badge {
+    background: repeating-linear-gradient(45deg, #FFEFBA, #FFEFBA 10px, #FFF5D6 10px, #FFF5D6 20px);
+    border: 2px dashed rgba(0,0,0,0.4);
+    box-shadow: 2px 2px 0px rgba(0,0,0,0.2);
+  }
+
+  .paper-grain {
+    background-image: radial-gradient(rgba(0, 0, 0, 0.08) 1px, transparent 1px);
+    background-size: 10px 10px;
+  }
+}
