@@ -78,25 +78,84 @@ export function HeroSection() {
           </div>
         </div>
 
-        {/* Integration Badges Row */}
-        <div className="pt-2">
-          <span className="block text-[11px] font-mono font-bold uppercase tracking-wider text-zinc-500 mb-2">
-            PLUG & PLAY INTEGRATIONS:
-          </span>
-          <div className="flex flex-wrap gap-2">
+        {/* Plug & Play Integrations Grid */}
+        <div className="pt-3">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <span className="inline-block w-3 h-3 bg-electric-blue border-2 border-pitch"></span>
+              <span className="text-xs sm:text-sm font-mono font-black uppercase tracking-wider text-pitch">
+                PLUG & PLAY INTEGRATIONS:
+              </span>
+            </div>
+            <span className="text-[11px] font-mono font-bold bg-lime border-2 border-pitch px-2.5 py-0.5 uppercase shadow-brutal-sm">
+              ZERO SDK BLOAT ⚡
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {[
-              { name: "Dodo Payments", icon: "/integrations/dodo-payments.png" },
-              { name: "Cursor AI", icon: "/integrations/cursor.png" },
-              { name: "Claude Code", icon: "/integrations/claude.png" },
-              { name: "Stripe", icon: "/integrations/stripe.png" },
-              { name: "Lemon Squeezy", icon: "/integrations/lemon-squeezy.png" },
+              {
+                name: "Dodo Payments",
+                icon: "/integrations/dodo-payments.png",
+                role: "Native Gateway",
+                highlight: true,
+              },
+              {
+                name: "Cursor AI",
+                icon: "/integrations/cursor.png",
+                role: "Plugin & Prompts",
+                highlight: false,
+              },
+              {
+                name: "Claude Code",
+                icon: "/integrations/claude.png",
+                role: "Official Skills",
+                highlight: false,
+              },
+              {
+                name: "Stripe",
+                icon: "/integrations/stripe.png",
+                role: "Subscriptions API",
+                highlight: false,
+              },
+              {
+                name: "Lemon Squeezy",
+                icon: "/integrations/lemon-squeezy.png",
+                role: "Merchant of Record",
+                highlight: false,
+              },
+              {
+                name: "Paddle",
+                icon: "/integrations/paddle.png",
+                role: "Billing Webhooks",
+                highlight: false,
+              },
             ].map((tool) => (
               <div
                 key={tool.name}
-                className="bg-white border-3 border-pitch px-2.5 py-1 text-xs font-mono font-bold flex items-center gap-1.5 shadow-brutal-sm"
+                className={`bg-white border-3 border-pitch p-2.5 sm:p-3 shadow-brutal flex items-center gap-3 transition-all duration-150 hover:-translate-y-1 hover:shadow-brutal-hover ${
+                  tool.highlight ? "bg-lime/20 border-pitch ring-2 ring-pitch" : ""
+                }`}
               >
-                <Image src={tool.icon} alt={tool.name} width={18} height={18} className="object-contain" />
-                <span>{tool.name}</span>
+                <div className="relative w-12 h-12 shrink-0 bg-paper border-2 border-pitch p-1 flex items-center justify-center shadow-brutal-sm overflow-hidden">
+                  <Image
+                    src={tool.icon}
+                    alt={tool.name}
+                    width={48}
+                    height={48}
+                    className="object-contain w-full h-full"
+                  />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs sm:text-sm font-mono font-black text-pitch truncate">
+                      {tool.name}
+                    </span>
+                  </div>
+                  <span className="block text-[10px] sm:text-[11px] font-mono font-bold text-zinc-500 truncate">
+                    {tool.role}
+                  </span>
+                </div>
               </div>
             ))}
           </div>
