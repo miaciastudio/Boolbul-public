@@ -4,11 +4,11 @@ import "./globals.css";
 export const metadata: Metadata = {
   metadataBase: new URL("https://boolbul.com"),
   title: {
-    default: "BoolBul — #1 Retention & Churn-Buster Engine for Dodo Payments",
+    default: "BoolBul — In-App Cancellation Interceptor & Churn Prevention",
     template: "%s | BoolBul",
   },
   description:
-    "Stop losing MRR. BoolBul is the dedicated retention interceptor & cancel-deflection modal for Dodo Payments and Stripe. Zero-trust security, 1500ms fail-open guarantee, 45-second setup.",
+    "Lightweight, in-app cancellation interceptor for indie SaaS builders. Keep subscribers inside your app with customizable exit pauses, discounts, and real exit feedback.",
   keywords: [
     "dodo payments",
     "dodo payments retention",
@@ -44,7 +44,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "BoolBul — Drop Churn, Keep The Cash",
     description:
-      "Dedicated cancellation interceptor & retention engine built for Dodo Payments. Intercept cancellations with dynamic offers in 45 seconds.",
+      "Lightweight, in-app cancellation interceptor for indie SaaS builders. Keep subscribers inside your app with pauses, discounts, and exit feedback.",
     url: "https://boolbul.com",
     siteName: "BoolBul",
     images: [
@@ -62,7 +62,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "BoolBul — Drop Churn, Keep The Cash",
     description:
-      "Dedicated cancellation interceptor & retention engine built for Dodo Payments. Protect your MRR in 45 seconds.",
+      "Lightweight, in-app cancellation interceptor for indie SaaS builders. Protect your MRR with zero dark patterns.",
     images: ["/banners/stop-churn-banner.png"],
     creator: "@miaciastudio",
   },
@@ -116,7 +116,7 @@ export default function RootLayout({
         url: "https://boolbul.com",
         name: "BoolBul",
         description:
-          "Dedicated retention interceptor & cancel deflection engine built for Dodo Payments.",
+          "Lightweight, in-app cancellation interceptor for indie SaaS builders.",
         publisher: {
           "@id": "https://boolbul.com/#organization",
         },

@@ -21,11 +21,11 @@ export function HeroSection() {
         </h1>
 
         <p className="font-mono text-sm sm:text-base text-zinc-800 leading-relaxed max-w-xl font-medium">
-          Dodo Payments users are walking out because you don&apos;t have a cancel-deflection modal.{" "}
+          Don&apos;t kick churning users to an external billing portal.{" "}
           <span className="font-bold bg-blush px-1 text-pitch border-b-2 border-pitch">
-            BoolBul stops them dead in their tracks
+            BoolBul keeps subscribers inside your app
           </span>{" "}
-          with dynamic discounts, one-click pauses, and zero enterprise bloat.
+          with customizable exit pauses, dynamic discounts, and real exit feedback.
         </p>
 
         {/* CTAs & Zero Trust Badge */}

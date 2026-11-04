@@ -11,7 +11,7 @@ export default function HomePage() {
         <span className="bg-crimson text-white px-2 py-0.5 border border-pitch text-[11px] animate-pulse">
           OPEN-SOURCE CORE
         </span>
-        <span className="text-pitch">DEDICATED RETENTION & CHURN-BUSTER FOR DODO PAYMENTS & STRIPE</span>
+        <span className="text-pitch">LIGHTWEIGHT IN-APP CANCELLATION INTERCEPTOR FOR INDIE SAAS</span>
         <span className="hidden md:inline bg-pitch text-lime px-2 py-0.5 text-[11px] font-mono">
           0% DARK PATTERNS
         </span>
