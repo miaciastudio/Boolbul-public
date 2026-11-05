@@ -4,13 +4,15 @@ import { MRRStatTicker } from "@/components/platform-screens/MRRStatTicker";
 import { RuleMatrixTuner } from "@/components/platform-screens/RuleMatrixTuner";
 import { SavedLedgerTable } from "@/components/platform-screens/SavedLedgerTable";
 import { BrutalButton } from "@/components/ui-primitives/BrutalButton";
+import { requireDashboardContext } from "@/backend/supabase/session";
 
 export const metadata = {
   title: "Cockpit Dashboard | BoolBul",
   description: "Live retention feed, saved MRR ledger, and rule tuner.",
 };
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const { tenant } = await requireDashboardContext();
   return (
     <main className="bg-cobalt min-h-screen p-4 md:p-8 paper-grain">
       <div className="max-w-6xl mx-auto space-y-6">
@@ -25,7 +27,7 @@ export default function DashboardPage() {
                 BOOLBUL COCKPIT
               </span>
               <span className="font-mono text-xs text-zinc-600 block -mt-1">
-                Workspace: <strong className="text-pitch">Production SaaS (Dodo Payments)</strong>
+                Workspace: <strong className="text-pitch">{tenant.name}</strong>
               </span>
             </div>
           </div>

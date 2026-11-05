@@ -1,7 +1,14 @@
-import { createClient } from "@supabase/supabase-js";
+import "server-only";
+import { createServerClient, type CookieMethodsServer } from "@supabase/ssr";
+import { authCookieOptions, getAuthConfig } from "./config";
+import type { AuthDatabase } from "./database";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co";
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "placeholder-anon-key";
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
+// Per-request clients prevent sharing session state across users.
+export function createSupabaseServerClient(cookies: CookieMethodsServer) {
+  const config = getAuthConfig();
+  return createServerClient<AuthDatabase>(config.supabaseUrl, config.anonKey, {
+    auth: { flowType: "pkce", autoRefreshToken: false, detectSessionInUrl: false, persistSession: true },
+    cookieOptions: authCookieOptions(config.appUrl),
+    cookies,
+  });
+}

@@ -35,17 +35,21 @@ DODO_PAYMENTS_API_KEY="your_dodo_api_key_here"
 EXECUTION PLAN:
 
 1. Create a server-side route at \`app/api/boolbul/claim-offer/route.ts\`:
-   - Accept POST requests with \`{ offerToken: string }\`.
-   - Verify the HMAC-SHA256 signature using process.env.BOOLBUL_SIGNING_SECRET.
-   - Decode payload: \`{ subscriptionId, action, payload }\`.
+   - Accept POST requests with \`{ offerJwt: string }\` from authenticated customers and verify CSRF protection.
+   - Use verifyOfferJwt with process.env.BOOLBUL_SIGNING_SECRET, issuer boolbul.com, HS256 only, and a strict five-minute lifetime.
+   - Validate \`{ tenantId, customerId, subscriptionId, offerType, offerValue, nonce, exp }\` against the tenant and subscription owned by the authenticated customer, never against browser-supplied identity alone. Discount JWTs additionally require a signed nonnegative integer discountDurationMonths (0 means ongoing).
+   - Atomically consume the nonce in a durable backend store before any gateway mutation; reject duplicate redemption with HTTP 409. Signature verification alone does not prevent replay.
    - Call Dodo Payments API using process.env.DODO_PAYMENTS_API_KEY:
-     * If \`action === "APPLY_DISCOUNT"\`: Call \`PATCH https://live.dodopayments.com/subscriptions/\${subscriptionId}\` with \`{ discount_code: payload.discountCode }\`.
-     * If \`action === "PAUSE_SUBSCRIPTION"\`: Call \`PATCH https://live.dodopayments.com/subscriptions/\${subscriptionId}\` with \`{ status: "paused", metadata: { pause_duration: payload.pauseDurationDays } }\`.
-   - Return \`{ success: true, message: "Offer applied" }\` or return 400 on invalid signature.
+     * For \`offerType === "discount"\`, map the signed offerValue in basis points (5000 = 50%) and discountDurationMonths to an approved server-configured discount code with exactly those terms; reject unsupported combinations.
+     * For \`offerType === "pause"\`, apply the verified offerValue as the pause duration in days.
+   - Return HTTP 403 for invalid tokens and HTTP 409 for expired/replayed offers. Use the nonce as the gateway idempotency key; persist the outcome before acknowledging success.
 
 2. Create the client hook at \`hooks/useBoolBul.ts\`:
    - Expose \`openRetentionModal({ customerId, subscriptionId, mrr, onCancelConfirmed, onOfferAccepted })\`.
-   - Wire 1500ms fail-open SLA: If the interceptor takes >1500ms to load, immediately invoke \`onCancelConfirmed()\` so the user is never trapped.
+   - POST \`{ publicKey, customerId, subscriptionId }\` to /api/v1/intercept/init; keep its initToken and server-returned rules.
+   - POST \`{ initToken, selection: ruleId }\` to /api/v1/intercept/claim; send the returned offerJwt only to your authenticated backend.
+   - Wire a 1500ms AbortController/Promise.race fail-open deadline including response parsing. On timeout, network error, non-2xx response, failOpen: true, or no eligible rules, immediately invoke \`onCancelConfirmed()\`.
+   - Never hide the native cancellation escape hatch, including while claiming an offer.
 
 3. Wrap the existing "Cancel Subscription" button on your billing page:
    - Intercept the \`onClick\` event.

@@ -7,12 +7,17 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "db:migrate:turso": "node --env-file-if-exists=.env.local --import tsx scripts/migrate-turso.ts",
+    "db:sync:tenants": "node --env-file-if-exists=.env.local --import tsx scripts/sync-edge-tenants.ts",
     "db:push": "prisma db push",
     "db:generate": "prisma generate"
   },
   "dependencies": {
     "@libsql/client": "^0.14.0",
     "@prisma/client": "^5.22.0",
+    "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.48.1",
     "canvas-confetti": "^1.9.4",
     "clsx": "^2.1.1",
@@ -21,9 +26,11 @@
     "next": "^14.2.24",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "server-only": "^0.0.1",
     "tailwind-merge": "^2.6.0"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.15",
     "@types/canvas-confetti": "^1.9.0",
     "@types/node": "^20.17.19",
     "@types/react": "^18.3.18",
@@ -32,7 +39,9 @@
     "postcss": "^8.5.2",
     "prisma": "^5.22.0",
     "tailwindcss": "^3.4.17",
+    "tsx": "^4.23.15",
     "typescript": "^5.7.3",
+    "vitest": "^4.1.12",
     "wrangler": "^4.157.0"
   }
 }

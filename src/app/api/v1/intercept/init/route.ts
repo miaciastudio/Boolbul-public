@@ -1,46 +1,45 @@
-import { NextRequest, NextResponse } from "next/server";
+import { createTursoClient } from "@/backend/turso-edge/client";
+import { isIdentifier } from "@/lib/crypto/jwt";
+import { InterceptError } from "@/lib/edge/errors";
+import { evaluationResponse, preflightResponse, readJsonObject } from "@/lib/edge/http";
+import { createInitToken } from "@/lib/edge/init-token";
+import { findActiveRules, findTenant } from "@/lib/edge/queries";
+import { evaluateRetention } from "@/lib/edge/retention-evaluator";
 
-export async function POST(req: NextRequest) {
-  try {
-    const body = await req.json();
-    const { publicKey, customerId, subscriptionId } = body;
+export const runtime = "edge";
+export const dynamic = "force-dynamic";
 
-    if (!publicKey) {
-      return NextResponse.json(
-        { error: "Missing publicKey parameter" },
-        { status: 400 }
-      );
-    }
-
-    // Return sample active rules for this workspace
-    return NextResponse.json({
-      sessionId: `sess_${Date.now()}_${Math.random().toString(36).substring(7)}`,
-      rules: [
-        {
-          reasonTrigger: "TOO_EXPENSIVE",
-          offerType: "DISCOUNT_PERCENT",
-          headline: "WAIT! BEFORE YOU BOUNCE...",
-          description: "Get 50% off for the next 2 months.",
-          payload: { discount_pct: 50, duration_months: 2, dodo_code: "SAVE50" },
-        },
-        {
-          reasonTrigger: "NOT_USING",
-          offerType: "PAUSE_SUBSCRIPTION",
-          headline: "FREEZE YOUR BILL, KEEP YOUR DATA",
-          description: "Pause payments for 30 days.",
-          payload: { pause_days: 30 },
-        },
-      ],
-      compliance: {
-        escapeHatchLabel: "No thanks, proceed to complete cancellation",
-        ftcCompliant: true,
-      },
-    });
-  } catch (err: any) {
-    return NextResponse.json(
-      { error: "Failed to initialize interception session", message: err.message },
-      { status: 500 }
-    );
-  }
+export function OPTIONS() {
+  return preflightResponse();
 }
 
+export async function POST(request: Request) {
+  const result = await evaluateRetention(async (signal) => {
+    const body = await readJsonObject(request, signal);
+    const { publicKey, customerId, subscriptionId } = body;
+    if (!isIdentifier(publicKey) || !isIdentifier(customerId) || !isIdentifier(subscriptionId)) {
+      throw new InterceptError("invalid_request", 400);
+    }
+    const db = createTursoClient(signal);
+    try {
+      const tenant = await findTenant(db, publicKey);
+      const rules = await findActiveRules(db, tenant.tenantId);
+      if (rules.length === 0) return { failOpen: true, reason: "no_eligible_rules", rules: [] };
+      const nonce = crypto.randomUUID();
+      const initToken = await createInitToken({
+        tenantId: tenant.tenantId, publicKey, customerId, subscriptionId, nonce,
+        ruleIds: rules.filter((rule) => rule.offerType !== "survey_only").map((rule) => rule.ruleId),
+      });
+      return {
+        failOpen: false,
+        rules,
+        nonce,
+        initToken,
+        compliance: { escapeHatchLabel: "No thanks, proceed to complete cancellation" },
+      };
+    } finally {
+      db.close();
+    }
+  }, request.signal);
+  return evaluationResponse(result);
+}
