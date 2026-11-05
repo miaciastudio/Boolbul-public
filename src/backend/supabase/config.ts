@@ -41,11 +41,20 @@ export function getSupabaseUrl(): string {
 }
 
 export function getAuthConfig() {
-  return {
-    appUrl: getAppUrl(),
-    supabaseUrl: getSupabaseUrl(),
-    anonKey: required(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY, "NEXT_PUBLIC_SUPABASE_ANON_KEY"),
-  };
+  const anonKey = required(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY, "NEXT_PUBLIC_SUPABASE_ANON_KEY");
+  if (anonKey.startsWith("sb_secret_")) throw new AuthConfigurationError("NEXT_PUBLIC_SUPABASE_ANON_KEY");
+  const parts = anonKey.split(".");
+  if (parts.length === 3) {
+    try {
+      const payload: unknown = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
+      if (!payload || typeof payload !== "object" || !("role" in payload) || payload.role !== "anon") {
+        throw new AuthConfigurationError("NEXT_PUBLIC_SUPABASE_ANON_KEY");
+      }
+    } catch {
+      throw new AuthConfigurationError("NEXT_PUBLIC_SUPABASE_ANON_KEY");
+    }
+  }
+  return { appUrl: getAppUrl(), supabaseUrl: getSupabaseUrl(), anonKey };
 }
 
 export function getServiceRoleKey(): string {

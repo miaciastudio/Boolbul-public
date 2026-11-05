@@ -5,7 +5,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { MRRStatTicker } from "@/components/platform-screens/MRRStatTicker";
 import { RuleMatrixTuner } from "@/components/platform-screens/RuleMatrixTuner";
-import { SavedLedgerTable } from "@/components/platform-screens/SavedLedgerTable";
+import { SavedLedgerTable, type LedgerRecord } from "@/components/platform-screens/SavedLedgerTable";
+import { BillingPanel } from "@/components/platform-screens/BillingPanel";
 import { BrutalButton } from "@/components/ui-primitives/BrutalButton";
 import { createClient } from "@supabase/supabase-js";
 
@@ -14,13 +15,16 @@ interface TenantData {
   name: string;
   slug: string;
   publicKey: string;
-  signingSecret: string;
+  planTier: string;
+  billingStatus: string;
+  billingMode: string;
 }
 
 export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [tenant, setTenant] = useState<TenantData | null>(null);
+  const [records, setRecords] = useState<LedgerRecord[]>([]);
 
   useEffect(() => {
     async function loadSession() {
@@ -33,7 +37,14 @@ export default function DashboardPage() {
         }
 
         const supabase = createClient(url, key);
+
+        // Supabase client auto-parses implicit hash tokens (#access_token=...)
         const { data: { session } } = await supabase.auth.getSession();
+
+        // If URL has tokens in the hash fragment, remove them from the address bar for security
+        if (typeof window !== "undefined" && window.location.hash.includes("access_token")) {
+          window.history.replaceState(null, "", window.location.pathname);
+        }
 
         if (session?.user) {
           setUserEmail(session.user.email || null);
@@ -41,7 +52,7 @@ export default function DashboardPage() {
           // Query tenant for this user
           const { data: memberships } = await supabase
             .from("tenant_memberships")
-            .select("tenant_id, tenants(id, name, slug, public_key, signing_secret)")
+            .select("tenant_id, tenants(id, name, slug, public_key, plan_tier, billing_status, billing_mode)")
             .eq("user_id", session.user.id)
             .limit(1);
 
@@ -52,8 +63,22 @@ export default function DashboardPage() {
               name: t.name,
               slug: t.slug,
               publicKey: t.public_key,
-              signingSecret: t.signing_secret,
+              planTier: t.plan_tier || "free",
+              billingStatus: t.billing_status || "trialing",
+              billingMode: t.billing_mode || "test_mode",
             });
+
+            // Fetch retention records
+            const { data: churnRecords } = await supabase
+              .from("churn_events")
+              .select("id, customer_id, subscription_id, mrr_cents, status, exit_reason, created_at")
+              .eq("tenant_id", t.id)
+              .order("created_at", { ascending: false })
+              .limit(50);
+
+            if (churnRecords) {
+              setRecords(churnRecords as LedgerRecord[]);
+            }
           } else {
             // Default workspace fallback
             const name = session.user.user_metadata?.full_name || session.user.email?.split("@")[0] || "Founder";
@@ -62,7 +87,9 @@ export default function DashboardPage() {
               name: `${name}'s Workspace`,
               slug: "main-workspace",
               publicKey: "bb_pub_live_79a2f1c8e034",
-              signingSecret: "bb_sec_live_99a8b1c4e782",
+              planTier: "free",
+              billingStatus: "trialing",
+              billingMode: "test_mode",
             });
           }
         }
@@ -86,6 +113,10 @@ export default function DashboardPage() {
     window.location.href = "/login";
   };
 
+  const saved = records.filter((r) => r.status === "rescued_discount" || r.status === "rescued_pause");
+  const savedMRR = saved.reduce((sum, r) => sum + r.mrr_cents, 0) / 100;
+  const deflectionRate = records.length ? Math.round((saved.length / records.length) * 1000) / 10 : 0;
+
   return (
     <main className="bg-cobalt min-h-screen p-4 md:p-8 paper-grain">
       <div className="max-w-6xl mx-auto space-y-6">
@@ -104,12 +135,12 @@ export default function DashboardPage() {
               </span>
               <span className="font-mono text-xs text-zinc-600 block -mt-1">
                 Workspace: <strong className="text-pitch">{tenant?.name || "Production Cockpit"}</strong>
-                {userEmail && <span className="ml-2 text-zinc-400">({userEmail})</span>}
+                {userEmail && <span className="ml-2 text-zinc-500 font-bold">({userEmail})</span>}
               </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <Link href="/onboarding">
               <BrutalButton variant="white" size="sm">
                 ⚙️ Setup Wizard
@@ -129,14 +160,26 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Real-time MRR Counters */}
-        <MRRStatTicker savedMRR={2840} recoveredSubs={47} deflectionRate={34.2} />
+        {/* Commercial Billing Panel */}
+        <BillingPanel
+          plan={tenant?.planTier || "free"}
+          status={tenant?.billingStatus || "trialing"}
+          mode={tenant?.billingMode || "test_mode"}
+          canManage={true}
+        />
 
-        {/* Live Offer Tuner */}
+        {/* Real Retention Metric Ticker */}
+        <MRRStatTicker
+          savedMRR={savedMRR}
+          recoveredSubs={saved.length}
+          deflectionRate={deflectionRate}
+        />
+
+        {/* Live Rule Matrix Tuner */}
         <RuleMatrixTuner />
 
-        {/* Saved Subscribers Feed */}
-        <SavedLedgerTable />
+        {/* Retention Events Activity Feed */}
+        <SavedLedgerTable records={records} />
       </div>
     </main>
   );

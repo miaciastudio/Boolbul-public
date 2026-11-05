@@ -19,25 +19,25 @@ export function RuleMatrixTuner() {
   };
 
   return (
-    <BrutalCard variant="cream" shadow="lg" className="space-y-4">
-      <div className="flex items-center justify-between border-b-3 border-pitch pb-3">
-        <div>
-          <h2 className="text-2xl font-black uppercase tracking-tight text-pitch">
+    <BrutalCard variant="cream" shadow="lg" className="min-w-0 space-y-4 !p-4 sm:!p-6">
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b-3 border-pitch pb-3">
+        <div className="min-w-0 flex-1 basis-72">
+          <h2 className="text-xl font-black uppercase leading-tight tracking-tight text-pitch sm:text-2xl">
             RULE MATRIX & OFFER TUNER
           </h2>
-          <p className="font-mono text-xs text-zinc-600">
+          <p className="mt-2 font-mono text-sm leading-relaxed text-zinc-700">
             Tune discount percentages and pause durations pushed to Turso Edge replicas.
           </p>
         </div>
-        <span className="font-mono text-xs font-black bg-lime px-2 py-1 border border-pitch">
+        <span className="shrink-0 border border-pitch bg-lime px-2 py-1 font-mono text-xs font-black">
           SYNC ENGINE: READY
         </span>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Discount Tuner */}
-        <div className="p-4 bg-white border-3 border-pitch space-y-3">
-          <div className="flex justify-between items-center font-mono text-xs">
+        <div className="min-w-0 space-y-3 border-3 border-pitch bg-white p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 font-mono text-sm">
             <span className="font-black uppercase">Primary Churn Discount:</span>
             <span className="font-black bg-lime px-2 py-0.5 border border-pitch text-sm">
               {discountPct}% OFF
@@ -50,9 +50,9 @@ export function RuleMatrixTuner() {
             step="5"
             value={discountPct}
             onChange={(e) => setDiscountPct(Number(e.target.value))}
-            className="w-full accent-lime cursor-pointer"
+            className="min-h-11 w-full cursor-pointer accent-pitch focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black"
           />
-          <div className="flex justify-between font-mono text-[11px] text-zinc-500">
+          <div className="flex flex-wrap justify-between gap-x-3 gap-y-2 font-mono text-xs leading-relaxed text-zinc-700">
             <span>10% (Subtle)</span>
             <span>50% (Recommended)</span>
             <span>80% (Aggressive)</span>
@@ -60,8 +60,8 @@ export function RuleMatrixTuner() {
         </div>
 
         {/* Pause Tuner */}
-        <div className="p-4 bg-white border-3 border-pitch space-y-3">
-          <div className="flex justify-between items-center font-mono text-xs">
+        <div className="min-w-0 space-y-3 border-3 border-pitch bg-white p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 font-mono text-sm">
             <span className="font-black uppercase">Max Subscription Freeze:</span>
             <span className="font-black bg-blush px-2 py-0.5 border border-pitch text-sm">
               {pauseDays} DAYS
@@ -74,9 +74,9 @@ export function RuleMatrixTuner() {
             step="7"
             value={pauseDays}
             onChange={(e) => setPauseDays(Number(e.target.value))}
-            className="w-full accent-cobalt cursor-pointer"
+            className="min-h-11 w-full cursor-pointer accent-cobalt focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black"
           />
-          <div className="flex justify-between font-mono text-[11px] text-zinc-500">
+          <div className="flex flex-wrap justify-between gap-x-3 gap-y-2 font-mono text-xs leading-relaxed text-zinc-700">
             <span>14 Days</span>
             <span>30 Days (Standard)</span>
             <span>90 Days (Sabbatical)</span>
@@ -84,11 +84,11 @@ export function RuleMatrixTuner() {
         </div>
       </div>
 
-      <div className="flex items-center justify-between pt-2">
-        <span className="font-mono text-xs font-bold text-cobalt">
+      <div className="flex flex-col items-stretch justify-between gap-3 pt-2 sm:flex-row sm:flex-wrap sm:items-center">
+        <span className="min-w-0 break-words font-mono text-sm font-bold text-cobalt">
           {saveStatus}
         </span>
-        <BrutalButton variant="lime" size="sm" onClick={handleSave}>
+        <BrutalButton variant="lime" size="sm" onClick={handleSave} className="min-h-11 whitespace-normal focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black">
           Push Changes to Edge →
         </BrutalButton>
       </div>

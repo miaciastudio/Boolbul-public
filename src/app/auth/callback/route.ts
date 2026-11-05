@@ -3,6 +3,7 @@ import { createSupabaseServerClient } from "@/backend/supabase/client";
 import { getAppUrl } from "@/backend/supabase/config";
 import { failureCode, loginResponse, safeNextPath, sessionErrorCode } from "@/backend/supabase/redirects";
 import { createRequestCookieBridge } from "@/backend/supabase/request";
+import { ensureWorkspace } from "@/backend/workspace/provision";
 
 export const dynamic = "force-dynamic";
 
@@ -23,11 +24,17 @@ export async function GET(request: NextRequest) {
       if (exchange.error) {
         response = loginResponse("oauth_failed", next);
       } else {
-        // An exchanged/session cookie user object is not an authorization check.
         const { data, error } = await supabase.auth.getUser();
-        response = error || !data.user
-          ? loginResponse(sessionErrorCode(error), next)
-          : NextResponse.redirect(new URL(next, appUrl), 303);
+        if (error || !data.user) {
+          response = loginResponse(sessionErrorCode(error), next);
+        } else {
+          try {
+            const workspace = await ensureWorkspace(data.user.id);
+            response = NextResponse.redirect(new URL(workspace.onboardingCompleted ? next : "/onboarding", appUrl), 303);
+          } catch {
+            response = loginResponse("workspace_unavailable", next);
+          }
+        }
       }
     }
   } catch (cause) {

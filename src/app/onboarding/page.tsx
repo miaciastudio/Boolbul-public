@@ -1,9 +1,7 @@
-import { OnboardingWizard } from "@/components/platform-screens/OnboardingWizard";
+"use client";
 
-export const metadata = {
-  title: "Setup Retention Flow | BoolBul",
-  description: "Link your Dodo Payments key and configure your retention interceptor.",
-};
+import React from "react";
+import { OnboardingWizard } from "@/components/platform-screens/OnboardingWizard";
 
 export default function OnboardingPage() {
   return (
@@ -12,4 +10,3 @@ export default function OnboardingPage() {
     </main>
   );
 }
-

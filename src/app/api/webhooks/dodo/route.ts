@@ -1,14 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyDodoWebhookSignature } from "@/backend/dodo-payments/webhooks";
+import { getWebhookKey, verifyDodoWebhookSignature } from "@/backend/dodo-payments/webhooks";
 
 export async function POST(req: NextRequest) {
   try {
     const rawBody = await req.text();
-    const signature = req.headers.get("x-dodo-signature");
-    const webhookSecret = process.env.DODO_PAYMENTS_WEBHOOK_KEY || "whsec_test";
+    let isValid = false;
 
-    // Verify webhook signature
-    const isValid = verifyDodoWebhookSignature(rawBody, signature, webhookSecret);
+    try {
+      const webhookKey = getWebhookKey();
+      isValid = await verifyDodoWebhookSignature(rawBody, req.headers, webhookKey);
+    } catch {
+      // In dev or sandbox when webhook secret is not set yet
+      isValid = process.env.NODE_ENV !== "production";
+    }
+
     if (!isValid && process.env.NODE_ENV === "production") {
       return NextResponse.json({ error: "Invalid webhook signature" }, { status: 401 });
     }
@@ -40,4 +45,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: err.message }, { status: 400 });
   }
 }
+
 

@@ -33,7 +33,7 @@ async function loadDashboardContext(): Promise<DashboardResult> {
 
     const { data: tenant, error: tenantError } = await supabase
       .from("tenants")
-      .select("id, name, slug")
+      .select("id, name, slug, public_key, plan_tier, billing_status, billing_mode, onboarding_completed_at")
       .eq("id", membership.tenant_id)
       .maybeSingle();
     if (tenantError || !tenant) return { error: "workspace_unavailable" };

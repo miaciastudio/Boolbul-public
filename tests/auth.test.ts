@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   exchange: vi.fn(),
   signIn: vi.fn(),
   signOut: vi.fn(),
+  ensureWorkspace: vi.fn(),
   from: vi.fn(),
   getAll: vi.fn(),
   set: vi.fn(),
@@ -23,6 +24,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@supabase/ssr", () => ({ createServerClient: mocks.createServerClient }));
 vi.mock("@supabase/supabase-js", () => ({ createClient: mocks.createAdminClient }));
+vi.mock("@/backend/workspace/provision", () => ({ ensureWorkspace: mocks.ensureWorkspace }));
 vi.mock("next/headers", () => ({ cookies: () => ({ getAll: mocks.getAll, set: mocks.set }) }));
 vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
 vi.mock("react", async (importOriginal) => ({
@@ -92,6 +94,7 @@ beforeEach(() => {
   mocks.exchange.mockResolvedValue({ data: { session: {} }, error: null });
   mocks.signIn.mockResolvedValue({ data: { url: `${SUPABASE}/auth/v1/authorize?provider=google` }, error: null });
   mocks.signOut.mockResolvedValue({ error: null });
+  mocks.ensureWorkspace.mockResolvedValue({ tenantId: membership.tenant_id, onboardingCompleted: true });
   membershipQuery = query(membership);
   tenantQuery = query(tenant);
   mocks.from.mockImplementation((table: string) => table === "tenant_memberships" ? membershipQuery : tenantQuery);
@@ -140,6 +143,12 @@ describe("canonical configuration and lazy clients", () => {
     expect(mocks.createServerClient).not.toHaveBeenCalled();
   });
 
+  it.each(["sb_secret_not-a-real-key", `header.${btoa(JSON.stringify({ role: "service_role" }))}.signature`])("rejects privileged keys in the public auth slot", (key) => {
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", key);
+    expect(() => createSupabaseServerClient({ getAll: () => [] })).toThrow(AuthConfigurationError);
+    expect(mocks.createServerClient).not.toHaveBeenCalled();
+  });
+
   it("requires a real service config only when constructing the admin client", () => {
     vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "");
     expect(() => createSupabaseAdmin()).toThrow(AuthConfigurationError);
@@ -171,6 +180,26 @@ describe("safe next destinations", () => {
 });
 
 describe("OAuth callback", () => {
+  it("sends a provisioned first-time founder to onboarding", async () => {
+    mocks.ensureWorkspace.mockResolvedValue({ tenantId: membership.tenant_id, onboardingCompleted: false });
+    const response = await callback(request("/auth/callback?code=valid"));
+    expect(mocks.ensureWorkspace).toHaveBeenCalledWith(user.id);
+    expect(location(response)).toBe(`${APP}/onboarding`);
+  });
+
+  it("does not provision an unverified user", async () => {
+    mocks.getUser.mockResolvedValue({ data: { user: null }, error: null });
+    await callback(request("/auth/callback?code=valid"));
+    expect(mocks.ensureWorkspace).not.toHaveBeenCalled();
+  });
+
+  it("preserves the session and exposes a retryable provisioning failure", async () => {
+    mocks.ensureWorkspace.mockRejectedValue(new Error("private upstream error"));
+    const response = await callback(request("/auth/callback?code=valid"));
+    expect(location(response)).toContain("/login?error=workspace_unavailable");
+    expect(location(response)).not.toContain("private");
+  });
+
   it("exchanges PKCE, verifies getUser and preserves cookie chunks/deletions on a canonical redirect", async () => {
     mocks.exchange.mockImplementation(async () => {
       await writeCookies([
@@ -399,7 +428,7 @@ describe("server component and RLS defense-in-depth", () => {
     expect(membershipQuery.eq).toHaveBeenCalledWith("user_id", user.id);
     expect(membershipQuery.limit).toHaveBeenCalledWith(1);
     expect(mocks.from).toHaveBeenNthCalledWith(2, "tenants");
-    expect(tenantQuery.select).toHaveBeenCalledWith("id, name, slug");
+    expect(tenantQuery.select).toHaveBeenCalledWith("id, name, slug, public_key, plan_tier, billing_status, billing_mode, onboarding_completed_at");
     expect(tenantQuery.eq).toHaveBeenCalledWith("id", membership.tenant_id);
     expect(mocks.createAdminClient).not.toHaveBeenCalled();
   });

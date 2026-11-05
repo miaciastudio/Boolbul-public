@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import { BrutalButton } from "@/components/ui-primitives/BrutalButton";
 import { createClient } from "@supabase/supabase-js";
@@ -8,31 +8,31 @@ import { createClient } from "@supabase/supabase-js";
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [supabaseUrl, setSupabaseUrl] = useState("");
-  const [supabaseAnonKey, setSupabaseAnonKey] = useState("");
-
-  useEffect(() => {
-    setSupabaseUrl(process.env.NEXT_PUBLIC_SUPABASE_URL || "https://doesmcrkuorjkmwtrbbv.supabase.co");
-    setSupabaseAnonKey(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "");
-  }, []);
 
   const handleGoogleLogin = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const url = supabaseUrl || "https://doesmcrkuorjkmwtrbbv.supabase.co";
-      const key = supabaseAnonKey || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+      const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://doesmcrkuorjkmwtrbbv.supabase.co";
+      const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 
       if (!key) {
-        throw new Error("Supabase Anon Key is not configured. Please contact support.");
+        throw new Error("Supabase Anon Key is missing");
       }
 
       const supabase = createClient(url, key);
+
+      // In production, force https://boolbul.com/dashboard as the destination
+      const isProd = typeof window !== "undefined" && window.location.origin.includes("boolbul.com");
+      const redirectUri = isProd
+        ? "https://boolbul.com/dashboard"
+        : (typeof window !== "undefined" ? `${window.location.origin}/dashboard` : "https://boolbul.com/dashboard");
+
       const { error: authError } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: typeof window !== "undefined" ? `${window.location.origin}/dashboard` : "https://boolbul.com/dashboard",
+          redirectTo: redirectUri,
         },
       });
 
@@ -98,7 +98,7 @@ export default function LoginPage() {
           </BrutalButton>
         </div>
 
-        <p className="text-xs font-mono text-zinc-600 bg-paper border border-pitch p-3">
+        <p className="text-xs font-mono text-zinc-600 bg-white border border-pitch p-3">
           ⚡ <strong>New here?</strong> Your first sign-in automatically provisions your workspace and HMAC signing keys.
         </p>
 

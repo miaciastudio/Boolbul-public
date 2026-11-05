@@ -14,8 +14,15 @@ if (fs.existsSync(outDir)) {
 fs.mkdirSync(outDir, { recursive: true });
 
 // 2. Copy public directory assets if present
-if (fs.existsSync(publicDir)) {
-  fs.cpSync(publicDir, outDir, { recursive: true });
+const possiblePublicDirs = [
+  path.join(rootDir, "public"),
+  path.join(rootDir, "Public"),
+];
+for (const pDir of possiblePublicDirs) {
+  if (fs.existsSync(pDir)) {
+    fs.cpSync(pDir, outDir, { recursive: true });
+    break;
+  }
 }
 
 // 3. Copy _next/static to out/_next/static
@@ -50,3 +57,4 @@ for (const p of pages) {
 }
 
 console.log("Pages export complete into:", outDir);
+
