@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build && node -e \"try{require('fs').rmSync('.next/cache',{recursive:true,force:true})}catch(e){}\"",
+    "build": "next build && node -e \"try{require('fs').rmSync('.next/cache',{recursive:true,force:true})}catch(e){}\" && node scripts/export-pages.mjs",
+    "deploy:pages": "wrangler pages deploy out --project-name boolbul --branch main",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",

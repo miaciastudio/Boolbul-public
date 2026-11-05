@@ -1,11 +1,8 @@
 import type { ReactNode } from "react";
-import { requireDashboardContext } from "@/backend/supabase/session";
 
-export const dynamic = "force-dynamic";
 export const metadata = { robots: { index: false, follow: false } };
 
-export default async function DashboardLayout({ children }: { children: ReactNode }) {
-  await requireDashboardContext();
+export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (
     <>
       {children}
