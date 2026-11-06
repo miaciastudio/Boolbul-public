@@ -28,7 +28,7 @@ export function HeroSection() {
 
         <div className="flex flex-col flex-wrap gap-4 pt-2 sm:flex-row">
           <Link
-            href="/onboarding"
+            href="/login?next=/onboarding"
             className="inline-flex min-h-11 items-center justify-center gap-2 border-3 border-pitch bg-lime px-5 py-3 text-center text-sm font-black uppercase tracking-wide text-pitch shadow-brutal-lg transition-transform hover:bg-lime-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-black"
           >
             Set up your app →

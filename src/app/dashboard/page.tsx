@@ -143,12 +143,17 @@ export default function DashboardPage() {
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <Link href="/dashboard/customizer">
               <BrutalButton variant="lime" size="sm">
-                🎨 Theme Customizer
+                🎨 Customizer
+              </BrutalButton>
+            </Link>
+            <Link href="/dashboard/settings">
+              <BrutalButton variant="white" size="sm">
+                ⚙️ Settings
               </BrutalButton>
             </Link>
             <Link href="/onboarding">
               <BrutalButton variant="white" size="sm">
-                ⚙️ Setup Wizard
+                Wizard
               </BrutalButton>
             </Link>
             {userEmail ? (

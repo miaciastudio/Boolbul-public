@@ -26,13 +26,18 @@ export function Navbar() {
         </div>
       </Link>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3">
+        <Link href="/docs">
+          <BrutalButton variant="white" size="sm">
+            📖 Docs
+          </BrutalButton>
+        </Link>
         <Link href="/demo">
           <BrutalButton variant="white" size="sm">
             🎬 Live Demo
           </BrutalButton>
         </Link>
-        <Link href="/onboarding">
+        <Link href="/login?next=/dashboard">
           <BrutalButton variant="lime" size="sm">
             Launch Cockpit →
           </BrutalButton>

@@ -1,0 +1,100 @@
+# BoolBul — Complete Developer & AI Assistant Specification
+Official Site: https://boolbul.com
+Repository: https://github.com/miaciastudio/Boolbul-private.git
+
+---
+
+## 1. Executive Summary
+BoolBul is an open-core SaaS retention interceptor designed for bootstrapped software founders. Instead of redirecting cancelling subscribers to an external Stripe or Dodo Payments portal, BoolBul triggers an interactive in-app modal offering dynamic exit pauses, temporary discounts, and friction-free exit feedback.
+
+---
+
+## 2. Cryptographic Security & Zero-Trust Architecture
+1. **Public Keys**: `bb_pub_live_<hex>`
+   - Safe to embed in frontend bundles.
+   - Tied to the tenant's workspace and verified at the edge.
+2. **Signing Secrets**: `bb_sec_live_<hex>`
+   - Strictly server-side (stored in backend `.env` as `BOOLBUL_SIGNING_SECRET`).
+   - Used to verify single-use HMAC-SHA256 tokens (`offerJwt`).
+3. **Replay Attack Defense**:
+   - Single-use random nonces are recorded in Turso edge database (`edge_used_nonces`).
+   - Duplicate attempts with the same nonce are rejected with HTTP 409.
+
+---
+
+## 3. Client SDK Integration Pattern (Next.js / React)
+
+```typescript
+import { openRetentionModal } from "@boolbul/sdk";
+
+export function CancelSubscriptionButton({ customerId, subscriptionId }: { customerId: string; subscriptionId: string }) {
+  const handleCancel = () => {
+    openRetentionModal({
+      publicKey: process.env.NEXT_PUBLIC_BOOLBUL_KEY!,
+      customerId,
+      subscriptionId,
+      planPrice: 49,
+      onCancelConfirmed: async () => {
+        // Native cancellation execution (FTC Compliant Exit)
+        await fetch("/api/billing/cancel", { method: "POST" });
+        window.location.reload();
+      },
+      onOfferAccepted: async (offer) => {
+        // Apply accepted discount / pause
+        await fetch("/api/billing/claim-offer", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ offerToken: offer.token }),
+        });
+      },
+    });
+  };
+
+  return (
+    <button onClick={handleCancel} className="text-red-600 underline">
+      Cancel Subscription
+    </button>
+  );
+}
+```
+
+---
+
+## 4. Dodo Payments Webhook & Claim Verification
+
+```typescript
+// /api/billing/claim-offer
+import { verifyOfferJwt } from "@boolbul/sdk/server";
+
+export async function POST(req: Request) {
+  const { offerToken } = await req.json();
+  const verified = await verifyOfferJwt(offerToken, process.env.BOOLBUL_SIGNING_SECRET!);
+
+  if (!verified.valid) {
+    return new Response("Invalid offer token", { status: 403 });
+  }
+
+  // Mutate subscription via Dodo Payments API
+  if (verified.offerType === "discount") {
+    await fetch(`https://live.dodopayments.com/subscriptions/${verified.subscriptionId}`, {
+      method: "PATCH",
+      headers: {
+        "Authorization": `Bearer ${process.env.DODO_PAYMENTS_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ discount_code: verified.discountCode }),
+    });
+  }
+
+  return Response.json({ success: true, status: "rescued" });
+}
+```
+
+---
+
+## 5. FTC & California ARL Compliance Checklist
+- Persistent escape hatch ("Proceed to cancel") rendered with WCAG AA 4.5:1 contrast.
+- Zero delay countdowns.
+- Zero forced questionnaires.
+- 1500ms fail-open SLA on all network calls.
+

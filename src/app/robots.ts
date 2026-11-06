@@ -5,12 +5,11 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: "*",
-        allow: ["/", "/demo", "/onboarding"],
-        disallow: ["/api/", "/dashboard"],
+        allow: ["/", "/docs", "/docs/*", "/demo", "/onboarding", "/login"],
+        disallow: ["/api/*", "/dashboard/*", "/auth/*"],
       },
     ],
     sitemap: "https://boolbul.com/sitemap.xml",
     host: "https://boolbul.com",
   };
 }
-

@@ -1,0 +1,23 @@
+# BoolBul (https://boolbul.com)
+> Lightweight in-app cancellation interceptor & exit telemetry engine for indie SaaS ($500 - $25k MRR).
+
+## Overview
+BoolBul intercepts churning SaaS users directly inside the application before they reach Stripe/Dodo billing portals. It evaluates dynamic exit pauses, discounts, and feedback surveys on Turso LibSQL Edge (<10ms globally) with a strict 1500ms fail-open SLA and 0% dark patterns.
+
+## Core Capabilities
+- In-app exit deflection modal (3 themes: Neo-Brutalist, Minimal Slate, Midnight OLED)
+- Turso LibSQL Edge rules evaluation (<10ms)
+- Dodo Payments & Stripe automated subscription pause & discount execution
+- Tamper-proof HMAC-SHA256 & JWT token verification
+- 100% FTC Click-to-Cancel (16 CFR Part 425) & California ARL compliance
+
+## API & Client SDK
+- Web Client Hook: `openRetentionModal({ publicKey, customerId, subscriptionId, onCancelConfirmed, onOfferAccepted })`
+- Edge Config: `GET https://boolbul.com/api/v1/widget-config/[publicKey]` (Cloudflare CDN cached, s-maxage=3600)
+- Edge Init: `POST https://boolbul.com/api/v1/intercept/init`
+- Edge Claim: `POST https://boolbul.com/api/v1/intercept/claim`
+- Webhook Ingest: `POST https://boolbul.com/api/webhooks/dodo`
+
+## Full Developer Spec
+Read https://boolbul.com/llms-full.txt for complete schemas, TypeScript interfaces, and integration prompts.
+

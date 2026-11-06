@@ -135,6 +135,60 @@ export default function RootLayout({
         featureList:
           "Dodo Payments Subscriptions API Integration, Zero-Trust Signed JWT Offer Tokens, 1500ms Fail-Open Guarantee, FTC Click-to-Cancel Compliance, Dynamic Discounts and Pauses",
       },
+      {
+        "@type": "HowTo",
+        name: "How to Integrate BoolBul in Your SaaS in 2 Minutes",
+        description: "Step-by-step guide to installing BoolBul's lightweight cancellation interceptor snippet and rescuing churning subscribers.",
+        step: [
+          {
+            "@type": "HowToStep",
+            name: "Embed the Client Script",
+            text: "Include the 4KB client SDK script on your billing or subscription management page.",
+            url: "https://boolbul.com/docs/quickstart",
+          },
+          {
+            "@type": "HowToStep",
+            name: "Trigger the Interceptor on Cancel Click",
+            text: "Call window.BoolBul.intercept() when a user clicks the cancel button with their subscription ID and customer email.",
+            url: "https://boolbul.com/docs/client-sdk",
+          },
+          {
+            "@type": "HowToStep",
+            name: "Verify Webhook and Apply Rescue Offer",
+            text: "Handle the webhook to pause subscription or apply a discount in Dodo Payments or Stripe.",
+            url: "https://boolbul.com/docs/webhooks",
+          },
+        ],
+      },
+      {
+        "@type": "FAQPage",
+        mainEntity: [
+          {
+            "@type": "Question",
+            name: "Is BoolBul compliant with the FTC Click-to-Cancel rule?",
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: "Yes. BoolBul guarantees zero dark patterns. An immediate high-contrast 'Proceed to Cancel' escape hatch is always visible and clickable with WCAG AA 4.5:1 contrast, satisfying 16 CFR Part 425 and California ARL.",
+            },
+          },
+          {
+            "@type": "Question",
+            name: "Does BoolBul require sharing my payment gateway secret keys?",
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: "No. BoolBul operates on a zero-trust model. You use a public key for client-side deflection and verify exit events on your own server using HMAC signatures. Your gateway API keys never touch BoolBul servers.",
+            },
+          },
+          {
+            "@type": "Question",
+            name: "What happens if the retention interceptor fails or times out?",
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: "BoolBul enforces a strict 1500ms fail-open SLA. If network latency exceeds 1.5 seconds, the user is immediately allowed to cancel smoothly without blocking their workflow.",
+            },
+          },
+        ],
+      },
     ],
   };
 
