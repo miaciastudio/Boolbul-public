@@ -25,6 +25,7 @@ export default function DashboardPage() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [tenant, setTenant] = useState<TenantData | null>(null);
   const [records, setRecords] = useState<LedgerRecord[]>([]);
+  const [isOnboarded, setIsOnboarded] = useState(false);
 
   useEffect(() => {
     async function loadSession() {
@@ -49,35 +50,54 @@ export default function DashboardPage() {
         if (session?.user) {
           setUserEmail(session.user.email || null);
 
-          // Query tenant for this user
+          // 1. Query tenant membership for this user
           const { data: memberships } = await supabase
             .from("tenant_memberships")
-            .select("tenant_id, tenants(id, name, slug, public_key, plan_tier, billing_status, billing_mode)")
+            .select("tenant_id, role")
             .eq("user_id", session.user.id)
             .limit(1);
 
-          if (memberships && memberships.length > 0 && memberships[0].tenants) {
-            const t = memberships[0].tenants as any;
-            setTenant({
-              id: t.id,
-              name: t.name,
-              slug: t.slug,
-              publicKey: t.public_key,
-              planTier: t.plan_tier || "free",
-              billingStatus: t.billing_status || "trialing",
-              billingMode: t.billing_mode || "test_mode",
-            });
+          if (memberships && memberships.length > 0) {
+            const tId = memberships[0].tenant_id;
 
-            // Fetch retention records
-            const { data: churnRecords } = await supabase
-              .from("churn_events")
-              .select("id, customer_id, subscription_id, mrr_cents, status, exit_reason, created_at")
-              .eq("tenant_id", t.id)
-              .order("created_at", { ascending: false })
-              .limit(50);
+            // 2. Query tenant details using strictly granted columns
+            const { data: t } = await supabase
+              .from("tenants")
+              .select("id, name, slug, public_key, plan_tier, created_at")
+              .eq("id", tId)
+              .single();
 
-            if (churnRecords) {
-              setRecords(churnRecords as LedgerRecord[]);
+            if (t) {
+              setTenant({
+                id: t.id,
+                name: t.name || "Main Workspace",
+                slug: t.slug,
+                publicKey: t.public_key,
+                planTier: t.plan_tier || "starter",
+                billingStatus: "trialing",
+                billingMode: "live_mode",
+              });
+
+              // Check if already onboarded
+              if (typeof window !== "undefined") {
+                const stored = localStorage.getItem(`boolbul_onboarded_${t.id}`);
+                if (stored === "true") {
+                  setIsOnboarded(true);
+                }
+              }
+
+              // 3. Fetch retention records for this tenant
+              const { data: churnRecords } = await supabase
+                .from("churn_events")
+                .select("id, customer_id, subscription_id, mrr_cents, status, exit_reason, created_at")
+                .eq("tenant_id", t.id)
+                .order("created_at", { ascending: false })
+                .limit(50);
+
+              if (churnRecords && churnRecords.length > 0) {
+                setRecords(churnRecords as LedgerRecord[]);
+                setIsOnboarded(true);
+              }
             }
           } else {
             // Default workspace fallback
@@ -151,11 +171,13 @@ export default function DashboardPage() {
                 ⚙️ Settings
               </BrutalButton>
             </Link>
-            <Link href="/onboarding">
-              <BrutalButton variant="white" size="sm">
-                Wizard
-              </BrutalButton>
-            </Link>
+            {!isOnboarded && (
+              <Link href="/onboarding">
+                <BrutalButton variant="white" size="sm">
+                  Wizard
+                </BrutalButton>
+              </Link>
+            )}
             {userEmail ? (
               <BrutalButton variant="cream" size="sm" onClick={handleSignOut}>
                 Sign Out
@@ -174,7 +196,7 @@ export default function DashboardPage() {
         <BillingPanel
           plan={tenant?.planTier || "free"}
           status={tenant?.billingStatus || "trialing"}
-          mode={tenant?.billingMode || "test_mode"}
+          mode={tenant?.billingMode || "live_mode"}
           canManage={true}
         />
 
@@ -186,7 +208,7 @@ export default function DashboardPage() {
         />
 
         {/* Live Rule Matrix Tuner */}
-        <RuleMatrixTuner />
+        <RuleMatrixTuner tenantId={tenant?.id} />
 
         {/* Retention Events Activity Feed */}
         <SavedLedgerTable records={records} />

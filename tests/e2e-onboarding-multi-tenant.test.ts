@@ -229,8 +229,8 @@ describe("Synthetic 5-Account E2E Multi-Tenant Isolation & Flow Tests", () => {
     const t2Count = await pg.query("SELECT COUNT(*) FROM public.churn_events WHERE tenant_id = (SELECT id FROM public.tenants WHERE slug = 'stripe-tool')");
     const t3Count = await pg.query("SELECT COUNT(*) FROM public.churn_events WHERE tenant_id = (SELECT id FROM public.tenants WHERE slug = 'cloud-app-dev')");
 
-    expect(Number(t1Count.rows[0].count)).toBe(1);
-    expect(Number(t2Count.rows[0].count)).toBe(1);
-    expect(Number(t3Count.rows[0].count)).toBe(1);
+    expect(Number((t1Count.rows[0] as any).count)).toBe(1);
+    expect(Number((t2Count.rows[0] as any).count)).toBe(1);
+    expect(Number((t3Count.rows[0] as any).count)).toBe(1);
   });
 });

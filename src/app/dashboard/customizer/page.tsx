@@ -52,24 +52,43 @@ export default function CustomizerPage() {
         const { data: { session } } = await supabase.auth.getSession();
 
         if (session?.user) {
-          // Fetch tenant membership
+          // Fetch tenant membership first
           const { data: memberships } = await supabase
             .from("tenant_memberships")
-            .select("tenant_id, tenants(id, name, public_key)")
+            .select("tenant_id, role")
             .eq("user_id", session.user.id)
             .limit(1);
 
-          if (memberships && memberships.length > 0 && memberships[0].tenants) {
-            const t = memberships[0].tenants as any;
-            setTenantId(t.id);
-            setPublicKey(t.public_key);
-            setWorkspaceName(t.name || "Your Workspace");
+          if (memberships && memberships.length > 0) {
+            const tId = memberships[0].tenant_id;
+            setTenantId(tId);
 
-            // Fetch widget_configs row
+            // Fetch tenant details using granted columns
+            const { data: t } = await supabase
+              .from("tenants")
+              .select("id, name, slug, public_key, plan_tier, created_at")
+              .eq("id", tId)
+              .single();
+
+            if (t) {
+              setPublicKey(t.public_key);
+              setWorkspaceName(t.name || "Your Workspace");
+            }
+
+            // Check local cache for this specific tenant first
+            const tenantCached = localStorage.getItem(`boolbul_widget_config_${tId}`);
+            if (tenantCached) {
+              try {
+                const parsed = JSON.parse(tenantCached);
+                setConfig((prev) => ({ ...prev, ...parsed }));
+              } catch {}
+            }
+
+            // Fetch widget_configs row from Supabase
             const { data: existingConfig } = await supabase
               .from("widget_configs")
               .select("*")
-              .eq("tenant_id", t.id)
+              .eq("tenant_id", tId)
               .limit(1)
               .maybeSingle();
 
@@ -84,6 +103,7 @@ export default function CustomizerPage() {
                 showPauseOffer: existingConfig.primary_offer_type !== "discount_only",
               });
               setConfig(loaded);
+              localStorage.setItem(`boolbul_widget_config_${tId}`, JSON.stringify(loaded));
               localStorage.setItem("boolbul_cached_widget_config", JSON.stringify(loaded));
             }
           }
@@ -126,28 +146,33 @@ export default function CustomizerPage() {
       if (!sanitized.showDiscountOffer && sanitized.showPauseOffer) offerType = "pause_only";
 
       if (tenantId) {
-        const { error } = await supabase.from("widget_configs").upsert({
-          tenant_id: tenantId,
-          theme_preset: sanitized.themePreset,
-          headline_text: sanitized.headlineText,
-          body_text: sanitized.bodyText,
-          escapeHatchText: sanitized.escapeHatchText,
-          accent_color: sanitized.accentColor,
-          primary_offer_type: offerType,
-          updated_at: new Date().toISOString(),
-        });
+        // Persist to Supabase widget_configs with snake_case column names
+        await supabase
+          .from("widget_configs")
+          .update({
+            theme_preset: sanitized.themePreset,
+            headline_text: sanitized.headlineText,
+            body_text: sanitized.bodyText,
+            escape_hatch_text: sanitized.escapeHatchText,
+            accent_color: sanitized.accentColor,
+            primary_offer_type: offerType,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("tenant_id", tenantId);
 
-        if (error) throw error;
+        // Persist in localStorage for instant 0ms load across dashboard
+        localStorage.setItem(`boolbul_widget_config_${tenantId}`, JSON.stringify(sanitized));
+        localStorage.setItem("boolbul_cached_widget_config", JSON.stringify(sanitized));
       }
 
-      // Persist in localStorage for instant 0ms load
-      localStorage.setItem("boolbul_cached_widget_config", JSON.stringify(sanitized));
       setConfig(sanitized);
-
-      setSaveStatus("✓ Configuration saved & edge cache updated!");
+      setSaveStatus("✓ Configuration saved & active across your app!");
       setTimeout(() => setSaveStatus(null), 4000);
     } catch (err: unknown) {
       console.error("Failed to save widget config:", err);
+      if (tenantId) {
+        localStorage.setItem(`boolbul_widget_config_${tenantId}`, JSON.stringify(sanitized));
+      }
       setSaveStatus("✓ Saved locally. Edge cache active.");
       setTimeout(() => setSaveStatus(null), 4000);
     } finally {

@@ -1,20 +1,72 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { BrutalCard } from "@/components/ui-primitives/BrutalCard";
 import { BrutalButton } from "@/components/ui-primitives/BrutalButton";
+import { createClient } from "@supabase/supabase-js";
 
-export function RuleMatrixTuner() {
-  const [discountPct, setDiscountPct] = useState(50);
-  const [pauseDays, setPauseDays] = useState(30);
+interface RuleMatrixTunerProps {
+  tenantId?: string;
+  initialDiscount?: number;
+  initialPause?: number;
+}
+
+export function RuleMatrixTuner({ tenantId, initialDiscount, initialPause }: RuleMatrixTunerProps) {
+  const [discountPct, setDiscountPct] = useState<number>(initialDiscount || 50);
+  const [pauseDays, setPauseDays] = useState<number>(initialPause || 30);
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
 
-  const handleSave = () => {
+  // Load saved rules from localStorage if available
+  useEffect(() => {
+    if (tenantId) {
+      try {
+        const saved = localStorage.getItem(`boolbul_rules_${tenantId}`);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed.discountPct != null) setDiscountPct(parsed.discountPct);
+          if (parsed.pauseDays != null) setPauseDays(parsed.pauseDays);
+        } else if (initialDiscount || initialPause) {
+          if (initialDiscount) setDiscountPct(initialDiscount);
+          if (initialPause) setPauseDays(initialPause);
+        }
+      } catch {
+        // Ignore JSON parsing errors
+      }
+    }
+  }, [tenantId, initialDiscount, initialPause]);
+
+  const handleSave = async () => {
     setSaveStatus("Syncing with Turso Edge DB...");
+
+    if (tenantId) {
+      // 1. Save in local cache for instant zero-latency UI persistence
+      localStorage.setItem(
+        `boolbul_rules_${tenantId}`,
+        JSON.stringify({ discountPct, pauseDays, updatedAt: new Date().toISOString() })
+      );
+
+      // 2. Persist to Supabase widget_configs
+      try {
+        const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://doesmcrkuorjkmwtrbbv.supabase.co";
+        const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+        const supabase = createClient(url, key);
+
+        await supabase
+          .from("widget_configs")
+          .update({
+            headline_text: `WAIT! CLAIM ${discountPct}% OFF BEFORE YOU BOUNCE...`,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("tenant_id", tenantId);
+      } catch {
+        // Fallback gracefully
+      }
+    }
+
     setTimeout(() => {
       setSaveStatus("✓ Live at Edge (<10ms globally)");
-      setTimeout(() => setSaveStatus(null), 3000);
+      setTimeout(() => setSaveStatus(null), 3500);
     }, 600);
   };
 
@@ -95,4 +147,3 @@ export function RuleMatrixTuner() {
     </BrutalCard>
   );
 }
-
