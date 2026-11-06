@@ -7,12 +7,12 @@
 [![Next.js 14](https://img.shields.io/badge/Next.js-14_App_Router-black?logo=next.js)](https://nextjs.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-Neo--Brutalist-38bdf8?logo=tailwind-css)](https://tailwindcss.com/)
 [![Turso Edge](https://img.shields.io/badge/Turso-LibSQL_Edge-00E599?logo=turso)](https://turso.tech/)
-[![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-F38020?logo=cloudflare)](https://workers.cloudflare.com/)
+[![Cloudflare Pages](https://img.shields.io/badge/Cloudflare-Pages_Deployed-F38020?logo=cloudflare)](https://pages.cloudflare.com/)
 [![Dodo Payments](https://img.shields.io/badge/Gateway-Dodo_Payments_Supported-CCFF00?color=1D2BFF)](https://dodopayments.com/)
 
-**Don't kick churning users to an external billing portal. Keep subscribers inside your app with customizable exit pauses, discounts, and real exit feedback.**
+**Don't kick churning users to an external billing portal. Keep subscribers inside your app with customizable exit pauses, dynamic discounts, and real exit feedback.**
 
-[🌐 Live Hosted Cloud](https://boolbul.com) • [🎬 Live Walkthrough Demo](https://boolbul.com/demo) • [⚡ 45-Sec Setup](#-45-second-setup-cursor--claude) • [🛡️ Zero-Trust Model](#-zero-trust-architecture)
+[🌐 Live Hosted Cloud](https://boolbul.com) • [📚 Developer Docs](https://boolbul.com/docs) • [🎬 Live Walkthrough Demo](https://boolbul.com/demo) • [⚡ 45-Sec Setup](#-45-second-setup-cursor--claude) • [🛡️ Zero-Trust Model](#-zero-trust-architecture)
 
 </div>
 
@@ -27,21 +27,32 @@ While billing gateways offer generic hosted customer portals, redirecting users 
 **BoolBul keeps subscribers inside your app and intercepts cancellations the moment they click "Cancel":**
 1. **Dynamic Rescue Offers:** Automatically serves 50% discounts or 30-day pauses right inside your app.
 2. **Exit Reason Telemetry:** Collects actual qualitative feedback before a subscriber leaves.
-3. **Zero-Trust Security:** We never touch your secret gateway keys. Our edge worker issues signed HMAC-SHA256 JWTs; your own server mutates Dodo Payments.
+3. **Zero-Trust Security:** We never touch your secret gateway keys. Our edge worker issues signed HMAC-SHA256 JWTs; your own server mutates Dodo Payments or Stripe.
 4. **1500ms Fail-Open Guarantee:** If our edge worker or the network hangs, the interceptor silently yields to the host app's native cancel event. Your users are never trapped.
-5. **Zero Dark Patterns:** Unhidden, high-contrast "Proceed to Cancel" escape hatch on every single modal state. Transparent compliance, zero deceptive friction.
+5. **Zero Dark Patterns:** Unhidden, high-contrast "Proceed to Cancel" escape hatch on every single modal state. Transparent compliance with 16 CFR Part 425 & California ARL.
 
 ---
 
 ## 📸 Platform Screenshots
 
-| Marketing Landing & Interceptor Hero | Onboarding: Drop The Keys & Zero-Trust |
+| Marketing Landing & Interceptor Hero | Onboarding: 4-Step Key Generation |
 | :---: | :---: |
-| ![Landing Hero](Public/screenshots/shot_home.png) | ![Onboarding](Public/screenshots/shot_onboarding.png) |
+| ![Landing Hero](public/screenshots/shot_home.png) | ![Onboarding](public/screenshots/shot_onboarding.png) |
 
 | Founder Cockpit & Saved MRR Ledger | Real-World SaaS Interception Simulation |
 | :---: | :---: |
-| ![Dashboard](Public/screenshots/shot_dashboard.png) | ![Demo Simulation](Public/screenshots/shot_demo.png) |
+| ![Dashboard](public/screenshots/shot_dashboard.png) | ![Demo Simulation](public/screenshots/shot_demo.png) |
+
+---
+
+## 🎨 Theme Matrix & Customizer
+
+BoolBul provides a live theme switcher and customizer accessible from `/dashboard/customizer`:
+- **Neo-Brutalist (Default)**: Retro high-voltage punk, pitch-black 3px borders, electric lime accents, and hard drop shadows.
+- **Minimal Slate**: Refined Linear / Vercel monochrome aesthetic for modern productivity tools.
+- **Midnight OLED**: High-contrast dark mode for terminal tools and developer-centric SaaS.
+
+All themes enforce non-negotiable FTC anti-dark pattern guardrails with high-contrast escape hatches.
 
 ---
 
@@ -59,7 +70,7 @@ sequenceDiagram
     User->>HostApp: Clicks "Cancel Subscription"
     HostApp->>Edge: POST /v1/intercept/init { publicKey, subId }
     Edge-->>HostApp: Return Tailored Rules (<15ms via Turso Edge)
-    HostApp->>User: Display Neo-Brutalist Interceptor Modal
+    HostApp->>User: Display Branded Interceptor Modal
     
     alt User Accepts Retention Deal (e.g. 50% Off)
         User->>HostApp: Accepts "50% Off for 2 Months"
@@ -75,6 +86,24 @@ sequenceDiagram
         HostApp->>HostServer: Native cancellation triggered instantly
     end
 ```
+
+---
+
+## 📖 Developer Documentation Hub
+
+Visit [`https://boolbul.com/docs`](https://boolbul.com/docs) for full interactive documentation:
+* [Quickstart (5-Minute Guide)](https://boolbul.com/docs/quickstart)
+* [Client SDK & Fail-Open Contract](https://boolbul.com/docs/client-sdk)
+* [Dodo Payments & Stripe Webhooks](https://boolbul.com/docs/webhooks)
+* [FTC 16 CFR Part 425 & California ARL Compliance](https://boolbul.com/docs/ftc-compliance)
+* [AI Agent Specs (`llms.txt`)](https://boolbul.com/llms.txt)
+
+---
+
+## 📦 Appwrite Cloud Function Template
+
+For founders hosting on Appwrite Cloud, check [`examples/appwrite-dodo-retention`](examples/appwrite-dodo-retention):
+A production-ready TypeScript Appwrite Cloud Function that verifies Dodo Payments subscription cancellations against BoolBul edge signatures.
 
 ---
 
@@ -122,9 +151,10 @@ Add your credentials:
 * **Supabase:** `NEXT_PUBLIC_SUPABASE_URL` & `SUPABASE_SERVICE_ROLE_KEY`
 * **Dodo Payments:** `DODO_PAYMENTS_API_KEY` & `DODO_PAYMENTS_WEBHOOK_KEY`
 
-### 3. Run Locally
+### 3. Run Locally & Test
 ```bash
 npm run dev
+npm test
 ```
 Open [http://localhost:3000](http://localhost:3000) to view the cockpit.
 
@@ -140,4 +170,3 @@ Open [http://localhost:3000](http://localhost:3000) to view the cockpit.
 <div align="center">
 Built with 🖤 by <a href="https://github.com/miaciastudio">Miacia Studio</a> for the global indie hacker community.
 </div>
-
