@@ -1,0 +1,26 @@
+{
+  "name": "appwrite-dodo-retention",
+  "version": "1.0.0",
+  "description": "Appwrite Cloud Function for Dodo Payments retention & cancellation interception with BoolBul Edge",
+  "main": "src/main.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "node src/main.js",
+    "test": "node --test"
+  },
+  "keywords": [
+    "appwrite",
+    "dodo-payments",
+    "retention",
+    "boolbul",
+    "churn-deflection"
+  ],
+  "author": "BoolBul (boolbul.com)",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.17.19",
+    "typescript": "^5.7.3"
+  }
+}
+

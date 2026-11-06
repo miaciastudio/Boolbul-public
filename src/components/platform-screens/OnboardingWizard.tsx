@@ -92,7 +92,7 @@ export function OnboardingWizard({ initialSetup = DEFAULT_SETUP, integration = D
         throw new Error(typeof result.message === "string" ? result.message : "Setup could not be saved. Please retry.");
       }
       if (result.tenantId !== setup.tenantId || result.publicKey !== setup.publicKey ||
-          result.onboardingCompleted !== true || !result.configuration) {
+        result.onboardingCompleted !== true || !result.configuration) {
         throw new Error("Could not confirm the saved configuration. Reload before continuing.");
       }
       setSetup(result as WorkspaceSetup);

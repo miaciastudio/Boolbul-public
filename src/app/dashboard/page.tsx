@@ -140,7 +140,12 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <Link href="/dashboard/customizer">
+              <BrutalButton variant="lime" size="sm">
+                🎨 Theme Customizer
+              </BrutalButton>
+            </Link>
             <Link href="/onboarding">
               <BrutalButton variant="white" size="sm">
                 ⚙️ Setup Wizard

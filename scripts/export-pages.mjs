@@ -35,6 +35,7 @@ const pages = [
   { src: "index.html", dest: "index.html" },
   { src: "login.html", dest: "login.html", folder: "login" },
   { src: "dashboard.html", dest: "dashboard.html", folder: "dashboard" },
+  { src: "dashboard/customizer.html", dest: "dashboard/customizer.html", folder: "dashboard/customizer" },
   { src: "demo.html", dest: "demo.html", folder: "demo" },
   { src: "onboarding.html", dest: "onboarding.html", folder: "onboarding" },
   { src: "_not-found.html", dest: "404.html" },
