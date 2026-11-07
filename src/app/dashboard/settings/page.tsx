@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { BrutalButton } from "@/components/ui-primitives/BrutalButton";
+import { BillingSection } from "@/components/platform-screens/BillingSection";
 
 type Workspace = { name: string; publicKey: string; gateway: string; primaryDomain: string | null; plan: string; canManage: boolean; email: string | null };
 type Notice = { kind: "ok" | "error"; text: string } | null;
@@ -36,6 +37,7 @@ export default function SettingsPage() {
       if (res.status === 401) { window.location.assign("/login?error=session_expired&next=/dashboard/settings"); return; }
       const json = await res.json();
       if (!res.ok) throw new Error();
+      if (json.access && json.access.status !== "active") { window.location.replace("/dashboard"); return; }
       const w = json.workspace as Workspace;
       setWs(w);
       setName(w.name);
@@ -179,6 +181,8 @@ export default function SettingsPage() {
             <NoticeBox notice={secretNotice} />
           </div>
         </section>
+
+        <BillingSection />
 
         <section className={card}>
           <h2 className="text-xl font-black uppercase">Your data</h2>

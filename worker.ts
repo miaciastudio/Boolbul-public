@@ -54,7 +54,7 @@ export default {
   /** Every 5 minutes: finish beta approvals the database webhook missed, end expired passes. */
   async scheduled(_event: unknown, _env: unknown, ctx: Ctx): Promise<void> {
     ctx.waitUntil(reconcileBeta().then(
-      (result) => { if (result.processed || result.expired) console.log("[boolbul] beta reconcile", result); },
+      (result) => { if (result.processed || result.expired || result.pruned) console.log("[boolbul] reconcile", result); },
       (error: unknown) => console.error("[boolbul] beta reconcile failed", { errorType: error instanceof Error ? error.name : "UnknownError" }),
     ));
   },

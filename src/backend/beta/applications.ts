@@ -124,7 +124,7 @@ export async function processApplication(applicationId: string): Promise<{ statu
 }
 
 /** Cron safety net: finishes anything the database webhook missed and ends expired passes. */
-export async function reconcileBeta(): Promise<{ processed: number; expired: number }> {
+export async function reconcileBeta(): Promise<{ processed: number; expired: number; pruned: number }> {
   const admin = createSupabaseAdmin();
   const { data } = await admin.from("invite_applications").select("id")
     .or("admin_notified_at.is.null,and(status.neq.pending,edge_synced_at.is.null),and(status.eq.confirmed,welcomed_at.is.null)")
@@ -151,7 +151,35 @@ export async function reconcileBeta(): Promise<{ processed: number; expired: num
       db.close();
     }
   }
-  return { processed, expired };
+  const pruned = await pruneDeletedWorkspaces().catch(() => 0);
+  return { processed, expired, pruned };
+}
+
+/**
+ * Removes edge bindings (and their rules) for workspaces that no longer exist in
+ * Supabase, so a deleted workspace's public key stops opening sessions.
+ * Only runs when the Supabase listing is complete, never on partial reads.
+ */
+export async function pruneDeletedWorkspaces(): Promise<number> {
+  const admin = createSupabaseAdmin();
+  const { data, error, count } = await admin.from("tenants").select("id", { count: "exact" }).limit(10_000);
+  if (error || !data || count === null || data.length !== count) return 0;
+  const live = new Set((data as { id: string }[]).map((t) => t.id));
+  const db = createTursoClient(AbortSignal.timeout(8000));
+  try {
+    const edge = await db.execute("SELECT tenant_id FROM edge_tenants");
+    const orphans = edge.rows.map((r) => String(r.tenant_id)).filter((id) => !live.has(id));
+    if (!orphans.length || orphans.length > 500) return 0;
+    for (const id of orphans) {
+      await db.batch([
+        { sql: "DELETE FROM edge_retention_rules WHERE tenant_id = ?", args: [id] },
+        { sql: "DELETE FROM edge_tenants WHERE tenant_id = ?", args: [id] },
+      ], "write");
+    }
+    return orphans.length;
+  } finally {
+    db.close();
+  }
 }
 
 export async function seatsTaken(): Promise<number> {
