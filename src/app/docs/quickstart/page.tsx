@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { C, Callout, Code, DocHeader, DocStep } from "@/components/docs/DocBlocks";
 import { reactSnippet, scriptSnippet, serverSnippet } from "@/lib/docs/snippets";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata = {
-  title: "Quickstart: add BoolBul in 10 minutes | BoolBul Docs",
-  description: "Add an in-app cancellation flow with exit survey, pause and discount offers to your SaaS. Works with Dodo Payments and Stripe.",
-};
+export const metadata = pageMetadata({
+  path: "/docs/quickstart",
+  title: "Quickstart: Add a Cancellation Flow to Your SaaS in 10 Minutes",
+  description: "Add an in-app cancellation flow with exit survey, pause and discount offers to your SaaS. Script tag or npm, plus two server routes for Dodo Payments or Stripe.",
+});
 
 export default function QuickstartPage() {
   return (
@@ -49,8 +51,8 @@ export default function QuickstartPage() {
 
       <div className="flex flex-wrap gap-3 border-t-2 border-pitch pt-5 font-mono text-sm font-bold">
         <Link href="/docs/client-sdk" className="underline">Client SDK reference →</Link>
-        <Link href="/docs/server" className="underline">Server SDK & gateways →</Link>
-        <Link href="/docs/mobile" className="underline">Mobile apps →</Link>
+        <Link href="/docs/server-adapters" className="underline">Server SDK & gateways →</Link>
+        <Link href="/docs/mobile-apps" className="underline">Mobile apps →</Link>
       </div>
     </div>
   );

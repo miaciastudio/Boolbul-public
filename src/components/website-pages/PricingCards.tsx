@@ -16,8 +16,8 @@ export function PricingCards() {
         { name: "Live customizer, 4 WCAG-AA themes", status: "Included" },
         { name: "1.5s fail-open + FTC click-to-cancel", status: "Included" },
       ],
-      cta: "Start with Starter",
-      href: "/login?mode=signup",
+      cta: "Claim 3 Months Free",
+      href: "/login?mode=apply",
       variant: "cream" as const,
       badge: null,
     },
@@ -32,8 +32,8 @@ export function PricingCards() {
         { name: "Slack & Discord alerts", status: "Coming soon" },
         { name: "Offer A/B testing", status: "Coming soon" },
       ],
-      cta: "Go Pro",
-      href: "/login?mode=signup",
+      cta: "Claim 3 Months Free (First 100 SaaS Only)",
+      href: "/login?mode=apply",
       variant: "lime" as const,
       badge: "PRO",
     },
@@ -64,7 +64,7 @@ export function PricingCards() {
           Your plan. <span className="mt-2 inline-block border-3 border-pitch bg-lime px-2">No surprises.</span>
         </h2>
         <p className="font-mono text-sm leading-relaxed text-zinc-700">
-          Choose Starter or Pro to continue in the dashboard. Preview and unavailable features are labeled below; selecting a plan does not charge you.
+          Invite-only beta: the first 100 approved SaaS founders get Pro free for 3 months — no credit card. After that, pick the plan that fits. Coming-soon features are labeled.
         </p>
       </div>
 

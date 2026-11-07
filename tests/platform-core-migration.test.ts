@@ -4,7 +4,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 
 // Applies every Supabase migration in order, exactly like a fresh `supabase db push`.
 const migrationsDir = new URL("../supabase/migrations/", import.meta.url);
-const migrations = readdirSync(migrationsDir).filter((name) => name.endsWith(".sql")).sort()
+const migrations = readdirSync(migrationsDir).filter((name) => name.endsWith(".sql") && !name.endsWith(".supabase.sql")).sort()
   .map((name) => readFileSync(new URL(name, migrationsDir), "utf8"));
 
 const authSetup = `
@@ -97,5 +97,75 @@ describe("platform core migration (all migrations, in-memory Postgres)", () => {
   it("does not let browsers write the ledger or call service functions", async () => {
     await expect(asRole("authenticated", owner, () => record("rescued_pause"))).rejects.toThrow(/permission denied/);
     await expect(asRole("anon", null, () => record("rescued_pause"))).rejects.toThrow(/permission denied/);
+  });
+});
+
+describe("invite-only beta migration", () => {
+  let db: PGlite;
+  const applicant = "33333333-3333-4333-8333-333333333333";
+  const other = "44444444-4444-4444-8444-444444444444";
+  let tenantId: string;
+
+  async function as<T>(role: string, userId: string | null, run: () => Promise<T>): Promise<T> {
+    await db.exec("SAVEPOINT s");
+    try {
+      await db.exec(`SET LOCAL ROLE ${role}`);
+      await db.query("SELECT pg_catalog.set_config('request.jwt.claim.sub', $1, true)", [userId ?? ""]);
+      return await run();
+    } finally {
+      await db.exec("ROLLBACK TO SAVEPOINT s; RELEASE SAVEPOINT s;");
+    }
+  }
+
+  beforeAll(async () => {
+    db = new PGlite();
+    await db.exec(authSetup);
+    for (const sql of migrations) await db.exec(sql);
+    await db.exec("SET ROLE supabase_auth_admin");
+    await db.query("INSERT INTO auth.users (id, email, raw_user_meta_data) VALUES ($1, 'a@x.test', '{}'), ($2, 'b@x.test', '{}')", [applicant, other]);
+    await db.exec("RESET ROLE");
+    tenantId = (await db.query<{ id: string }>("SELECT id FROM public.tenants WHERE owner_user_id = $1", [applicant])).rows[0].id;
+    await db.query(`INSERT INTO public.invite_applications (user_id, tenant_id, full_name, email, website_url)
+      VALUES ($1, $2, 'Ada Founder', 'a@x.test', 'https://ada.app')`, [applicant, tenantId]);
+  }, 30_000);
+  beforeEach(async () => { await db.exec("BEGIN"); });
+  afterEach(async () => { await db.exec("ROLLBACK; RESET ROLE;"); });
+  afterAll(async () => { await db?.close(); });
+
+  const tenant = async () => (await db.query<{ access_status: string; trial_ends_at: Date | null }>(
+    "SELECT access_status, trial_ends_at FROM public.tenants WHERE id = $1", [tenantId])).rows[0];
+
+  it("starts new workspaces as pending", async () => {
+    expect((await tenant()).access_status).toBe("pending");
+  });
+
+  it("lets applicants read only their own application and never write it", async () => {
+    const own = await as("authenticated", applicant, () => db.query("SELECT full_name, status FROM public.invite_applications"));
+    expect(own.rows).toEqual([{ full_name: "Ada Founder", status: "pending" }]);
+    const others = await as("authenticated", other, () => db.query("SELECT id FROM public.invite_applications"));
+    expect(others.rows).toHaveLength(0);
+    await expect(as("authenticated", applicant, () => db.query("UPDATE public.invite_applications SET status = 'confirmed'"))).rejects.toThrow(/permission denied/);
+    await expect(as("authenticated", applicant, () => db.query("SELECT notes FROM public.invite_applications"))).rejects.toThrow(/permission denied/);
+    await expect(as("anon", null, () => db.query("SELECT id FROM public.invite_applications"))).rejects.toThrow(/permission denied/);
+  });
+
+  it("confirming activates the workspace with a 3-month pass; rejecting locks it", async () => {
+    await db.query("UPDATE public.invite_applications SET status = 'confirmed' WHERE user_id = $1", [applicant]);
+    const active = await tenant();
+    expect(active.access_status).toBe("active");
+    const days = (active.trial_ends_at!.getTime() - Date.now()) / 86_400_000;
+    expect(days).toBeGreaterThan(85);
+    expect(days).toBeLessThan(95);
+    const app = (await db.query<{ confirmed_at: Date | null; edge_synced_at: Date | null }>(
+      "SELECT confirmed_at, edge_synced_at FROM public.invite_applications WHERE user_id = $1", [applicant])).rows[0];
+    expect(app.confirmed_at).toBeInstanceOf(Date);
+    expect(app.edge_synced_at).toBeNull();
+    await db.query("UPDATE public.invite_applications SET status = 'rejected' WHERE user_id = $1", [applicant]);
+    expect((await tenant()).access_status).toBe("rejected");
+  });
+
+  it("rejects malformed applications", async () => {
+    await expect(db.query(`INSERT INTO public.invite_applications (user_id, full_name, email, website_url)
+      VALUES ($1, 'X', 'b@x.test', 'javascript:alert(1)')`, [other])).rejects.toThrow(/check/);
   });
 });

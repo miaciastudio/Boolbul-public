@@ -13,5 +13,6 @@
   "services": [
     { "binding": "WORKER_SELF_REFERENCE", "service": "boolbul-app" }
   ],
+  "triggers": { "crons": ["*/5 * * * *"] },
   "observability": { "enabled": true }
 }

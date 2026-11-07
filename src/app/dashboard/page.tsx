@@ -4,10 +4,13 @@ import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { BrutalButton } from "@/components/ui-primitives/BrutalButton";
+import { BetaGate, type BetaAccess } from "@/components/platform-screens/BetaGate";
 
 type Overview = {
   workspace: { id: string; name: string; publicKey: string; plan: string; billingStatus: string; billingMode: string | null;
-    gateway: string; primaryDomain: string | null; onboardingCompleted: boolean; role: string; canManage: boolean; email: string | null };
+    gateway: string; primaryDomain: string | null; onboardingCompleted: boolean; role: string; canManage: boolean; email: string | null;
+    trialEndsAt: string | null; billedPlan: string };
+  access: BetaAccess;
   usage: { month: string; used: number; quota: number };
   last30Days: { sessions: number; saved: number; cancelled: number; saveRate: number; savedMrrCents: number;
     discounts: number; pauses: number; topReasons: { id: string; label: string; count: number }[] };
@@ -124,7 +127,11 @@ export default function DashboardPage() {
   }
   if (!data) return <main className="grid min-h-screen place-items-center bg-cobalt font-mono font-black text-cream paper-grain">Loading your cockpit…</main>;
 
+  if (data.access && data.access.status !== "active") {
+    return <BetaGate access={data.access} email={data.workspace.email} onApplied={() => void load()} />;
+  }
   const { workspace: ws, usage, last30Days: stats } = data;
+  const trialActive = ws.trialEndsAt != null && Date.parse(ws.trialEndsAt) > Date.now();
   const usagePct = usage.quota ? Math.min(100, Math.round((usage.used / usage.quota) * 100)) : 0;
   const unlimited = usage.quota >= 1_000_000;
   const maxReason = Math.max(1, ...stats.topReasons.map((r) => r.count));
@@ -220,11 +227,12 @@ export default function DashboardPage() {
             <div>
               <h2 className="text-xl font-black uppercase">Plan & usage</h2>
               <p className="font-mono text-xs text-zinc-700">
-                Plan: <strong className="uppercase">{ws.plan}</strong> · Billing: <strong className="uppercase">{ws.billingStatus}</strong>
+                Plan: <strong className="uppercase">{ws.plan}</strong>
+                {trialActive ? <> · <strong>Beta pass free until {new Date(ws.trialEndsAt!).toLocaleDateString()}</strong></> : <> · Billing: <strong className="uppercase">{ws.billingStatus}</strong></>}
                 {ws.billingMode === "test_mode" && <span className="ml-2 border border-pitch bg-amber-200 px-1">TEST MODE</span>}
               </p>
             </div>
-            {ws.canManage && ws.plan !== "pro" && process.env.NEXT_PUBLIC_BOOLBUL_SELF_HOSTED !== "true" && (
+            {ws.canManage && ws.plan !== "pro" && !trialActive && process.env.NEXT_PUBLIC_BOOLBUL_SELF_HOSTED !== "true" && (
               <div className="flex flex-wrap gap-2">
                 {ws.plan === "free" && <BrutalButton size="sm" variant="white" disabled={!!billingBusy} onClick={() => void upgrade("starter")}>{billingBusy === "starter" ? "Opening…" : "Starter · $19/mo"}</BrutalButton>}
                 <BrutalButton size="sm" disabled={!!billingBusy} onClick={() => void upgrade("pro")}>{billingBusy === "pro" ? "Opening…" : "Pro · $49/mo"}</BrutalButton>

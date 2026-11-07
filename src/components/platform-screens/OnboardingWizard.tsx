@@ -70,6 +70,7 @@ export function OnboardingWizard() {
   const load = useCallback(async () => {
     try {
       const data = await api("/api/workspace/overview", "GET");
+      if (data.access && data.access.status !== "active") { window.location.replace("/dashboard"); return; }
       setPublicKey(data.workspace.publicKey);
       setCanManage(data.workspace.canManage);
       setName(data.workspace.name);
@@ -259,7 +260,7 @@ export function OnboardingWizard() {
           <div className="space-y-2">
             <h3 className="font-black uppercase">3 · Apply offers on your server ({gateway === "stripe" ? "Stripe" : "Dodo Payments"})</h3>
             <CodeBlock label="api/boolbul routes" code={serverSnippet(gateway)} />
-            <p className="font-mono text-xs text-zinc-700">Building a mobile app? See <Link href="/docs/mobile" className="font-bold underline">mobile setup</Link>.</p>
+            <p className="font-mono text-xs text-zinc-700">Building a mobile app? See <Link href="/docs/mobile-apps" className="font-bold underline">mobile setup</Link>.</p>
           </div>
 
           <div className="space-y-2 border-t-2 border-pitch pt-4">

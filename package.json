@@ -13,9 +13,9 @@
     "db:sync:tenants": "node --env-file-if-exists=.env.local --import tsx scripts/sync-edge-tenants.ts",
     "db:push": "prisma db push",
     "db:generate": "prisma generate",
-    "build:worker": "opennextjs-cloudflare build",
-    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
-    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "build:worker": "opennextjs-cloudflare build && node scripts/strip-worker-env.mjs",
+    "preview": "npm run build:worker && opennextjs-cloudflare preview",
+    "deploy": "npm run build:worker && opennextjs-cloudflare deploy",
     "build:sdk": "node scripts/build-sdk.mjs",
     "export:public": "node scripts/export-public.mjs"
   },

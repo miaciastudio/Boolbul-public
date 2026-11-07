@@ -10,6 +10,13 @@ export type PlanTier = "free" | "starter" | "pro" | "scale";
 /** Monthly saved-subscriber allowance enforced at the edge. */
 export const PLAN_QUOTAS: Record<PlanTier, number> = { free: 25, starter: 500, pro: 1_000_000, scale: 1_000_000 };
 
+/** The beta's 3-month free pass counts as Pro until it ends. */
+export function effectivePlan(plan: unknown, trialEndsAt?: string | null, now = Date.now()): PlanTier {
+  const base = (typeof plan === "string" && plan in PLAN_QUOTAS ? plan : "free") as PlanTier;
+  if (trialEndsAt && Date.parse(trialEndsAt) > now && (base === "free" || base === "starter")) return "pro";
+  return base;
+}
+
 export function quotaForPlan(plan: unknown): number {
   // Self-hosted installs (open-core) have no plan limits.
   if (process.env.BOOLBUL_SELF_HOSTED === "true") return 1_000_000;
@@ -78,12 +85,16 @@ export function summarize(rows: LedgerRow[]) {
 
 export async function loadOverview(caller: WorkspaceCaller) {
   const { data: tenant, error } = await caller.supabase.from("tenants")
-    .select("id, name, public_key, plan_tier, billing_status, billing_mode, gateway, primary_domain, onboarding_completed_at")
+    .select("id, name, public_key, plan_tier, billing_status, billing_mode, gateway, primary_domain, onboarding_completed_at, access_status, trial_ends_at")
     .eq("id", caller.tenantId).maybeSingle()
     .returns<{ id: string; name: string; public_key: string; plan_tier: PlanTier; billing_status: string; billing_mode: string | null;
-      gateway: string; primary_domain: string | null; onboarding_completed_at: string | null }>();
+      gateway: string; primary_domain: string | null; onboarding_completed_at: string | null;
+      access_status: "pending" | "active" | "rejected"; trial_ends_at: string | null }>();
   if (error || !tenant) throw new WorkspaceApiError("workspace_unavailable", 503, "Your workspace could not be loaded. Please retry.");
 
+  const { data: application } = await caller.supabase.from("invite_applications" as never)
+    .select("full_name, website_url, status, applied_at, confirmed_at").maybeSingle()
+    .returns<{ full_name: string; website_url: string; status: string; applied_at: string; confirmed_at: string | null }>();
   const since = new Date(Date.now() - 30 * 86_400_000).toISOString();
   const month = usageMonth();
   const [recent, ledger, usage, setup] = await Promise.all([
@@ -107,12 +118,18 @@ export async function loadOverview(caller: WorkspaceCaller) {
 
   return {
     workspace: {
-      id: tenant.id, name: tenant.name, publicKey: tenant.public_key, plan: tenant.plan_tier,
+      id: tenant.id, name: tenant.name, publicKey: tenant.public_key, plan: effectivePlan(tenant.plan_tier, tenant.trial_ends_at),
+      billedPlan: tenant.plan_tier, trialEndsAt: tenant.trial_ends_at,
       billingStatus: tenant.billing_status, billingMode: tenant.billing_mode, gateway: tenant.gateway,
       primaryDomain: tenant.primary_domain, onboardingCompleted: tenant.onboarding_completed_at != null,
       role: caller.role, canManage: caller.role === "owner" || caller.role === "admin", email: caller.user.email ?? null,
     },
-    usage: usage ?? { month, used: 0, quota: quotaForPlan(tenant.plan_tier) },
+    access: {
+      status: tenant.access_status,
+      application: application ? { fullName: application.full_name, websiteUrl: application.website_url, status: application.status,
+        appliedAt: application.applied_at, confirmedAt: application.confirmed_at } : null,
+    },
+    usage: usage ?? { month, used: 0, quota: quotaForPlan(effectivePlan(tenant.plan_tier, tenant.trial_ends_at)) },
     last30Days: summarize(recent),
     ledger,
     offers: setup?.configuration ?? null,

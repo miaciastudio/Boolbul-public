@@ -5,6 +5,6 @@ import { parseWorkspaceSettings, updateWorkspaceSettings } from "@/backend/works
 export const dynamic = "force-dynamic";
 
 export function PATCH(request: NextRequest) {
-  return handleWorkspaceRequest(request, { write: true, managerOnly: true }, async ({ tenantId }) =>
+  return handleWorkspaceRequest(request, { write: true, managerOnly: true, requireActive: true }, async ({ tenantId }) =>
     updateWorkspaceSettings(tenantId, parseWorkspaceSettings(await readJsonBody(request))));
 }

@@ -1,10 +1,12 @@
 import { C, Callout, Code, DocHeader, DocStep, Table } from "@/components/docs/DocBlocks";
 import { serverSnippet } from "@/lib/docs/snippets";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata = {
-  title: "Server SDK: Dodo Payments & Stripe | BoolBul Docs",
-  description: "Verify BoolBul offer tokens and apply pauses, discounts and cancellations with Dodo Payments or Stripe from your own server.",
-};
+export const metadata = pageMetadata({
+  path: "/docs/server-adapters",
+  title: "Server Adapters: Apply Pauses & Discounts with Dodo Payments and Stripe",
+  description: "Verify BoolBul offer tokens and apply pauses, discounts and cancellations with Dodo Payments or Stripe from your own server. Zero dependencies.",
+});
 
 export default function ServerDocsPage() {
   return (

@@ -31,7 +31,9 @@ export async function GET(request: NextRequest) {
           try {
             const workspace = await ensureWorkspace(data.user.id);
             // Password recovery always lands on the reset form, even before onboarding.
-            const destination = next.startsWith("/auth/reset-password") || workspace.onboardingCompleted ? next : "/onboarding";
+            const destination = next.startsWith("/auth/reset-password") ? next
+              : workspace.accessStatus && workspace.accessStatus !== "active" ? "/dashboard"
+              : workspace.onboardingCompleted ? next : "/onboarding";
             response = NextResponse.redirect(new URL(destination, appUrl), 303);
           } catch {
             response = loginResponse("workspace_unavailable", next);

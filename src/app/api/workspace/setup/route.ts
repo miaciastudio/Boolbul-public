@@ -50,6 +50,14 @@ async function handle(request: NextRequest, write: boolean): Promise<NextRespons
     const { data: { user }, error } = await supabase.auth.getUser();
     if (error || !user) throw new WorkspaceSetupError("unauthorized", 401, "Please sign in again before continuing setup.");
     if (write) {
+      // Invite-only beta: offers can't go live before the application is approved.
+      const { data: member } = await supabase.from("tenant_memberships").select("tenant_id").eq("user_id", user.id)
+        .order("created_at", { ascending: true }).limit(1).maybeSingle();
+      if (member) {
+        const { data: gate } = await supabase.from("tenants").select("access_status" as never).eq("id", member.tenant_id).maybeSingle();
+        const access = (gate as { access_status?: string } | null)?.access_status;
+        if (access && access !== "active") throw new WorkspaceSetupError("access_pending", 403, "Your beta application is still under review.");
+      }
       response = NextResponse.json(await saveWorkspaceSetup(supabase, user.id, await readChoices(request)));
     } else {
       const context = await requireDashboardContext();

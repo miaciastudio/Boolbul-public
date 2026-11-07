@@ -1,10 +1,12 @@
 import { C, Callout, Code, DocHeader, DocStep, Table } from "@/components/docs/DocBlocks";
 import { flutterSnippet, reactNativeSnippet, swiftSnippet, webviewUrl } from "@/lib/docs/snippets";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata = {
-  title: "Mobile apps: React Native, Flutter, iOS, Android | BoolBul Docs",
-  description: "Show BoolBul's cancellation flow inside native mobile apps with a hosted WebView page and message bridge.",
-};
+export const metadata = pageMetadata({
+  path: "/docs/mobile-apps",
+  title: "Cancellation Flow for Mobile Apps — React Native, Flutter, iOS, Android",
+  description: "Show BoolBul's cancellation flow inside native and hybrid mobile apps with a hosted WebView page and message bridge. Code for React Native, Flutter, Swift and Kotlin.",
+});
 
 export default function MobileDocsPage() {
   return (

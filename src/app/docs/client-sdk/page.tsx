@@ -1,9 +1,11 @@
 import { C, Callout, Code, DocHeader, DocStep, Table } from "@/components/docs/DocBlocks";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata = {
-  title: "Client SDK reference | BoolBul Docs",
-  description: "BoolBul.open(), callbacks, fail-open behaviour, React hook and live preview for the BoolBul cancellation widget.",
-};
+export const metadata = pageMetadata({
+  path: "/docs/client-sdk",
+  title: "Client SDK Reference — BoolBul.open(), React Hook & Fail-Open",
+  description: "BoolBul.open() options and callbacks, exit reasons, the 1.5s fail-open guarantee, React useBoolBul hook and the network-free live preview.",
+});
 
 export default function ClientSdkPage() {
   return (

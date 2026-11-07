@@ -1,11 +1,13 @@
 import React from "react";
 import Link from "next/link";
 import { DuctTapeBadge } from "@/components/ui-primitives/DuctTapeBadge";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata = {
-  title: "Documentation & Architecture Overview | BoolBul",
-  description: "Learn how BoolBul intercepts in-app subscription cancellations at the edge, with a 1.5s fail-open and zero dark patterns.",
-};
+export const metadata = pageMetadata({
+  path: "/docs",
+  title: "BoolBul Docs — In-App Cancellation Flow for Dodo Payments & Stripe",
+  description: "How BoolBul works: in-app cancellation flow, signed offer tokens, 1.5s fail-open and zero dark patterns. Guides for web, React, servers and mobile apps.",
+});
 
 export default function DocsOverviewPage() {
   return (

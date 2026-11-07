@@ -7,7 +7,12 @@ const nextConfig = {
     unoptimized: true,
   },
   async redirects() {
-    return [{ source: "/docs/webhooks", destination: "/docs/server", permanent: true }];
+    return [
+      { source: "/docs/webhooks", destination: "/docs/server-adapters", permanent: true },
+      { source: "/docs/server", destination: "/docs/server-adapters", permanent: true },
+      { source: "/docs/mobile", destination: "/docs/mobile-apps", permanent: true },
+      { source: "/docs/ftc-compliance", destination: "/compliance/ftc-click-to-cancel", permanent: true },
+    ];
   },
 };
 

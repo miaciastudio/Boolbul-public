@@ -18,14 +18,14 @@ const DOCS_NAV = [
     category: "INTEGRATION",
     items: [
       { href: "/docs/client-sdk", label: "Client SDK" },
-      { href: "/docs/server", label: "Server SDK: Dodo & Stripe" },
-      { href: "/docs/mobile", label: "Mobile apps" },
+      { href: "/docs/server-adapters", label: "Server SDK: Dodo & Stripe" },
+      { href: "/docs/mobile-apps", label: "Mobile apps" },
     ],
   },
   {
     category: "LEGAL & COMPLIANCE",
     items: [
-      { href: "/docs/ftc-compliance", label: "FTC Click-to-Cancel" },
+      { href: "/compliance/ftc-click-to-cancel", label: "FTC Click-to-Cancel" },
     ],
   },
 ];

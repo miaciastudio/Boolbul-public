@@ -4,10 +4,12 @@ import { getAppUrl } from "@/backend/supabase/config";
 import { createRequestCookieBridge } from "@/backend/supabase/request";
 import { safeNextPath } from "@/backend/supabase/redirects";
 import { ensureWorkspace } from "@/backend/workspace/provision";
+import { BetaError, createApplication, notifyAdmin, parseApplication } from "@/backend/beta/applications";
+import { runInBackground } from "@/lib/edge/background";
 
 export const dynamic = "force-dynamic";
 
-type Action = "sign_in" | "sign_up" | "reset" | "update_password";
+type Action = "sign_in" | "sign_up" | "apply" | "reset" | "update_password";
 const EMAIL = /^[^\s@]{1,64}@[^\s@]{1,255}\.[^\s@]{2,}$/;
 
 class AuthFlowError extends Error {
@@ -60,29 +62,47 @@ export async function POST(request: NextRequest) {
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw new AuthFlowError(400, friendly(error.message));
       response = NextResponse.json({ status: "updated", redirect: "/dashboard" });
-    } else if (action === "sign_in" || action === "sign_up") {
-      if (!EMAIL.test(email)) throw new AuthFlowError(400, "Enter a valid email address.");
-      if (password.length < (action === "sign_up" ? 8 : 1) || password.length > 72) {
-        throw new AuthFlowError(400, action === "sign_up" ? "Use at least 8 characters for your password." : "Enter your password.");
+    } else if (action === "apply" || action === "sign_up") {
+      // Invite-only beta: every new account is an application that starts pending.
+      const application = parseApplication(body);
+      if (!EMAIL.test(email)) throw new AuthFlowError(400, "Enter a valid work email.");
+      if (password.length < 8 || password.length > 72) throw new AuthFlowError(400, "Use 8-72 characters for your password.");
+      if (typeof body.confirmPassword === "string" && body.confirmPassword !== password) throw new AuthFlowError(400, "Passwords don't match.");
+      const result = await supabase.auth.signUp({
+        email, password,
+        options: { emailRedirectTo: callback("/dashboard"), data: { full_name: application.fullName } },
+      });
+      if (result.error || !result.data.user) throw new AuthFlowError(400, friendly(result.error?.message));
+      // Supabase returns a user with no identities when the email is already registered.
+      if (Array.isArray(result.data.user.identities) && result.data.user.identities.length === 0) {
+        throw new AuthFlowError(400, friendly("already registered"));
       }
-      const result = action === "sign_in"
-        ? await supabase.auth.signInWithPassword({ email, password })
-        : await supabase.auth.signUp({ email, password, options: { emailRedirectTo: callback("/onboarding") } });
+      const user = result.data.user;
+      if (result.data.session) await ensureWorkspace(user.id).catch(() => null);
+      const row = await createApplication(user.id, email, application);
+      runInBackground(notifyAdmin(row));
+      response = result.data.session
+        ? NextResponse.json({ status: "applied", redirect: "/dashboard" })
+        : NextResponse.json({ status: "confirm_email", message: "Application received! Confirm your email from the link we just sent, then sign in to track your invite." });
+    } else if (action === "sign_in") {
+      if (!EMAIL.test(email)) throw new AuthFlowError(400, "Enter a valid email address.");
+      if (password.length < 1 || password.length > 72) throw new AuthFlowError(400, "Enter your password.");
+      const result = await supabase.auth.signInWithPassword({ email, password });
       if (result.error) throw new AuthFlowError(400, friendly(result.error.message));
       if (!result.data.session || !result.data.user) {
         response = NextResponse.json({ status: "confirm_email", message: "Check your inbox to confirm your email, then you're in." });
       } else {
         const workspace = await ensureWorkspace(result.data.user.id).catch(() => null);
         if (!workspace) throw new AuthFlowError(503, "Signed in, but your workspace isn't ready. Please try again in a moment.");
-        response = NextResponse.json({ status: "signed_in", redirect: workspace.onboardingCompleted ? next : "/onboarding" });
+        response = NextResponse.json({ status: "signed_in", redirect: workspace.accessStatus && workspace.accessStatus !== "active" ? "/dashboard" : workspace.onboardingCompleted ? next : "/onboarding" });
       }
     } else {
       throw new AuthFlowError(400, "Unknown action.");
     }
   } catch (error) {
-    const known = error instanceof AuthFlowError;
+    const known = error instanceof AuthFlowError || error instanceof BetaError;
     response = NextResponse.json({ error: true, message: known ? error.message : "Sign-in is temporarily unavailable. Please try again." },
-      { status: known ? error.status : 503 });
+      { status: known ? (error as AuthFlowError | BetaError).status : 503 });
   }
   return bridge.applyTo(response);
 }

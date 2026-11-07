@@ -1,9 +1,11 @@
 import { LiveDemo } from "@/components/website-pages/LiveDemo";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata = {
-  title: "Live Demo — Try the Cancellation Flow | BoolBul",
-  description: "Try BoolBul's in-app cancellation flow: exit survey, pause and discount offers, and an always-visible cancel link. Desktop and mobile.",
-};
+export const metadata = pageMetadata({
+  path: "/demo",
+  title: "Live Demo — Try an In-App SaaS Cancellation Flow",
+  description: "Click through BoolBul's real cancellation flow: exit survey, reason-matched pause and discount offers, and an always-visible cancel link, on desktop and mobile.",
+});
 
 export default function DemoPage() {
   return (

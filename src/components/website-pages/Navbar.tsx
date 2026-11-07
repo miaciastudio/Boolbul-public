@@ -37,9 +37,14 @@ export function Navbar() {
             🎬 Live Demo
           </BrutalButton>
         </Link>
-        <Link href="/login?next=/dashboard">
+        <Link href="/login">
+          <BrutalButton variant="white" size="sm">
+            Sign in
+          </BrutalButton>
+        </Link>
+        <Link href="/login?mode=apply">
           <BrutalButton variant="lime" size="sm">
-            Launch Cockpit →
+            Request Early Access →
           </BrutalButton>
         </Link>
       </div>

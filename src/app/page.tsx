@@ -2,26 +2,30 @@ import { Navbar } from "@/components/website-pages/Navbar";
 import { HeroSection } from "@/components/website-pages/HeroSection";
 import { PricingCards } from "@/components/website-pages/PricingCards";
 import { Footer } from "@/components/website-pages/Footer";
+import { BetaBanner } from "@/components/website-pages/BetaBanner";
+import { FaqSection } from "@/components/seo/FaqSection";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { FAQS } from "@/lib/faq";
+import { faqLd, pageMetadata, softwareApplicationLd } from "@/lib/seo";
+
+export const metadata = pageMetadata({
+  path: "/",
+  title: "BoolBul — In-App Cancellation Flow & Churn Reduction for SaaS (Dodo Payments + Stripe)",
+  socialTitle: "BoolBul — Drop churn. Keep the cash.",
+  description:
+    "Keep cancelling customers inside your app: one-tap exit survey, reason-matched pause and discount offers, and an always-visible one-click cancel link. Works with Dodo Payments and Stripe. First 100 SaaS get 3 months free.",
+});
 
 export default function HomePage() {
   return (
-    <main className="bg-cobalt min-h-screen p-4 md:p-8 paper-grain selection:bg-lime selection:text-pitch">
-      {/* Top Announcement Bar */}
-      <div className="max-w-6xl mx-auto mb-6 bg-lime border-3 border-pitch shadow-brutal p-2 text-center text-xs md:text-sm font-black uppercase tracking-wider flex items-center justify-center gap-3">
-        <span className="bg-crimson text-white px-2 py-0.5 border border-pitch text-[11px] animate-pulse">
-          OPEN-SOURCE CORE
-        </span>
-        <span className="text-pitch">LIGHTWEIGHT IN-APP CANCELLATION INTERCEPTOR FOR INDIE SAAS</span>
-        <span className="hidden md:inline bg-pitch text-lime px-2 py-0.5 text-[11px] font-mono">
-          0% DARK PATTERNS
-        </span>
-      </div>
-
-      {/* Main Newsprint Brutalist Card */}
-      <div className="max-w-6xl mx-auto bg-cream border-4-black shadow-brutal-xl p-6 md:p-10 relative">
+    <main className="min-h-screen bg-cobalt p-4 paper-grain selection:bg-lime selection:text-pitch md:p-8">
+      <JsonLd nodes={[softwareApplicationLd, faqLd(FAQS)]} />
+      <BetaBanner />
+      <div className="relative mx-auto max-w-6xl border-4-black bg-cream p-6 shadow-brutal-xl md:p-10">
         <Navbar />
         <HeroSection />
         <PricingCards />
+        <FaqSection />
         <Footer />
       </div>
     </main>

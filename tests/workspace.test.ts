@@ -271,7 +271,7 @@ describe("Workspace provisioning and setup with mocked Supabase + local libSQL",
 
   it("concurrently provisions one binding and deterministic unconditional defaults", async () => {
     const outcomes = await Promise.all(Array.from({ length: 5 }, () => ensureWorkspace(userId)));
-    expect(outcomes).toEqual(Array(5).fill({ tenantId, onboardingCompleted: false }));
+    expect(outcomes).toEqual(Array(5).fill({ tenantId, onboardingCompleted: false, accessStatus: "active" }));
     expect(rpc).toHaveBeenCalledWith("ensure_workspace_for_user", { p_user_id: userId });
     const tenants = await db.execute("SELECT * FROM edge_tenants");
     expect(tenants.rows).toHaveLength(1);
@@ -294,7 +294,7 @@ describe("Workspace provisioning and setup with mocked Supabase + local libSQL",
     await expect(ensureWorkspace(userId)).rejects.toThrow(/sync failed/);
     edgeFails = false;
     completedAt = "2026-11-06T00:00:00.000Z";
-    expect(await ensureWorkspace(userId)).toEqual({ tenantId, onboardingCompleted: true });
+    expect(await ensureWorkspace(userId)).toEqual({ tenantId, onboardingCompleted: true, accessStatus: "active" });
     expect(await ruleRows()).toEqual(before);
     expect((await db.execute("SELECT status,monthly_intercept_quota,current_month_usage FROM edge_tenants")).rows[0])
       .toEqual({ status: "suspended", monthly_intercept_quota: 27, current_month_usage: 26 });
@@ -326,7 +326,7 @@ describe("Workspace provisioning and setup with mocked Supabase + local libSQL",
     } finally {
       timeout.mockRestore();
     }
-    await expect(ensureWorkspace(userId)).resolves.toEqual({ tenantId, onboardingCompleted: false });
+    await expect(ensureWorkspace(userId)).resolves.toEqual({ tenantId, onboardingCompleted: false, accessStatus: "active" });
   });
 
   it("does not continue to edge on invalid user, RPC failure or secret lookup failure", async () => {

@@ -46,7 +46,7 @@ export async function readJsonBody(request: NextRequest, maxBytes = 8192): Promi
  */
 export async function handleWorkspaceRequest(
   request: NextRequest,
-  options: { write: boolean; managerOnly: boolean },
+  options: { write: boolean; managerOnly: boolean; requireActive?: boolean },
   handler: (caller: WorkspaceCaller) => Promise<unknown>,
 ): Promise<NextResponse> {
   const bridge = createRequestCookieBridge(request);
@@ -67,6 +67,14 @@ export async function handleWorkspaceRequest(
     const role = membership.role as MembershipRole;
     if (options.managerOnly && !isManager(role)) {
       throw new WorkspaceApiError("forbidden", 403, "Only a workspace owner or admin can do this.");
+    }
+    if (options.requireActive) {
+      const { data: gate } = await supabase.from("tenants").select("access_status" as never).eq("id", membership.tenant_id).maybeSingle();
+      const status = (gate as { access_status?: string } | null)?.access_status;
+      if (status !== "active") {
+        throw new WorkspaceApiError(status === "rejected" ? "access_rejected" : "access_pending", 403,
+          status === "rejected" ? "This workspace was not approved for the beta." : "Your beta application is still under review.");
+      }
     }
     response = NextResponse.json(await handler({ user, tenantId: membership.tenant_id, role, supabase }));
   } catch (error) {

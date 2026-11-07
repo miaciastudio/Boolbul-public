@@ -38,7 +38,7 @@ export function GET(request: NextRequest) {
 
 /** Saves through the caller's own session: RLS + column grants decide what may change. */
 export function PUT(request: NextRequest) {
-  return handleWorkspaceRequest(request, { write: true, managerOnly: true }, async (caller) => {
+  return handleWorkspaceRequest(request, { write: true, managerOnly: true, requireActive: true }, async (caller) => {
     const body = await readJsonBody(request, 16_384);
     const config = normalizeConfig((body as { config?: unknown })?.config ?? body);
     const { error } = await caller.supabase.from("widget_configs" as never)
