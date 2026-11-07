@@ -8,6 +8,7 @@ import { hashSigningSecret } from "../src/lib/edge/tenant-secret";
 import { consumeNonce, findActiveRules } from "../src/lib/edge/queries";
 import { redeemOfferJwt } from "../src/lib/edge/redeem-offer";
 import { InterceptError } from "../src/lib/edge/errors";
+import { edgeSchemaSql } from "./helpers/edge-schema";
 
 const state = vi.hoisted(() => ({ db: undefined as Client | undefined }));
 vi.mock("../src/backend/turso-edge/client", () => ({
@@ -24,7 +25,7 @@ const request = (body: unknown) => new Request("https://boolbul.com/api/v1/inter
 
 beforeEach(async () => {
   state.db = createClient({ url: ":memory:" });
-  await state.db.executeMultiple(await readFile("turso/migrations/001_phase_one.sql", "utf8"));
+  await state.db.executeMultiple(edgeSchemaSql());
   await state.db.execute({
     sql: "INSERT INTO edge_tenants(tenant_id, public_key, signing_secret_hash) VALUES(?, ?, ?)",
     args: ["tenant-1", identity.publicKey, await hashSigningSecret(secret)],
@@ -75,13 +76,18 @@ describe("edge initialization and claim", () => {
     expect((await initialize(request({ ...identity, publicKey: "' OR 1=1 --" }))).status).toBe(403);
     await state.db!.execute("UPDATE edge_tenants SET status = 'suspended'");
     expect((await initialize(request(identity))).status).toBe(403);
-    await state.db!.execute("UPDATE edge_tenants SET status = 'active', current_month_usage = monthly_intercept_quota");
+    const month = new Date().toISOString().slice(0, 7);
+    await state.db!.execute({ sql: "UPDATE edge_tenants SET status = 'active', current_month_usage = monthly_intercept_quota, usage_month = ?", args: [month] });
     expect((await initialize(request(identity))).status).toBe(403);
+    // Last month's exhausted counter does not block a new month.
+    await state.db!.execute("UPDATE edge_tenants SET usage_month = '2000-01'");
+    expect((await initialize(request(identity))).status).toBe(200);
   });
 
   it("does not trust browser eligibility or sign survey-only rules", async () => {
     await state.db!.execute(`UPDATE edge_retention_rules SET trigger_condition = '{"min_billing_months":2}'`);
-    expect(await (await initialize(request({ ...identity, billingMonths: 100 }))).json()).toMatchObject({ failOpen: true, reason: "no_eligible_rules" });
+    // Ineligible rules are dropped; the session still opens so the survey and outcome are recorded.
+    expect(await (await initialize(request({ ...identity, billingMonths: 100 }))).json()).toMatchObject({ failOpen: false, rules: [] });
     await state.db!.execute(`UPDATE edge_retention_rules SET trigger_condition = '{}', offer_type = 'survey_only'`);
     const init = await (await initialize(request(identity))).json();
     expect((await claim(request({ initToken: init.initToken, selection: "discount-rule" }))).status).toBe(403);
@@ -136,5 +142,52 @@ describe("atomic nonce locks", () => {
     await expect(consumeNonce(state.db!, { tenantId: "tenant-1", nonce: crypto.randomUUID(), exp: 1 }, "claim"))
       .rejects.toMatchObject({ code: "expired", status: 409 });
     expect((await state.db!.execute("SELECT * FROM edge_used_nonces")).rows).toHaveLength(0);
+  });
+});
+
+describe("ledger, usage and outcome beacons", () => {
+  const rpcCalls = () => (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls
+    .filter(([url]) => String(url).includes("/rpc/record_retention_event"))
+    .map(([, init]) => JSON.parse(String((init as RequestInit).body)));
+
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn(async (url: RequestInfo | URL) => String(url).includes("/rpc/")
+      ? Response.json("ok") : Response.json([{ signing_secret: secret }])));
+  });
+
+  it("binds gateway and MRR into the session and rejects invalid MRR", async () => {
+    expect((await initialize(request({ ...identity, mrrCents: -1 }))).status).toBe(400);
+    expect((await initialize(request({ ...identity, mrrCents: 1.5 }))).status).toBe(400);
+    await state.db!.execute("UPDATE edge_tenants SET gateway = 'stripe'");
+    const init = await (await initialize(request({ ...identity, mrrCents: 4900 }))).json();
+    expect(init).toMatchObject({ failOpen: false, gateway: "stripe", sessionId: init.nonce });
+  });
+
+  it("records a rescue only after a signed claim and counts one deflection", async () => {
+    const init = await (await initialize(request({ ...identity, mrrCents: 4900 }))).json();
+    const response = await claim(request({ initToken: init.initToken, selection: "discount-rule", reasonId: "too_expensive" }));
+    expect(response.status).toBe(200);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(rpcCalls()).toEqual([expect.objectContaining({
+      p_tenant_id: "tenant-1", p_session_id: init.nonce, p_status: "rescued_discount",
+      p_offer_type: "discount", p_mrr_cents: 4900, p_gateway: "dodo_payments", p_exit_reason: "too_expensive",
+    })]);
+    const usage = await state.db!.execute("SELECT current_month_usage, usage_month FROM edge_tenants");
+    expect(usage.rows[0]).toMatchObject({ current_month_usage: 1, usage_month: new Date().toISOString().slice(0, 7) });
+  });
+
+  it("accepts shown/cancelled beacons with a valid reason, never a browser-claimed rescue", async () => {
+    const { POST: outcome } = await import("../src/app/api/v1/intercept/outcome/route");
+    const init = await (await initialize(request(identity))).json();
+    const send = (body: unknown) => outcome(request(body));
+    expect((await send({ initToken: init.initToken, event: "shown" })).status).toBe(202);
+    expect((await send({ initToken: init.initToken, event: "cancelled", reasonId: "unused", comment: "  bye  " })).status).toBe(202);
+    expect((await send({ initToken: init.initToken, event: "rescued_discount" })).status).toBe(400);
+    expect((await send({ initToken: init.initToken, event: "cancelled", reasonId: "DROP TABLE" })).status).toBe(400);
+    expect((await send({ initToken: "forged.token.value", event: "cancelled" })).status).toBe(403);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(rpcCalls().map((call) => [call.p_status, call.p_exit_reason, call.p_exit_feedback])).toEqual([
+      ["intercepted", null, null], ["cancelled", "unused", "bye"],
+    ]);
   });
 });

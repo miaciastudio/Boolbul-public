@@ -4,7 +4,6 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BrutalButton } from "@/components/ui-primitives/BrutalButton";
-import { createClient } from "@supabase/supabase-js";
 
 export default function ResetPasswordPage() {
   const router = useRouter();
@@ -18,8 +17,8 @@ export default function ResetPasswordPage() {
     e.preventDefault();
     setError(null);
 
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters");
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters");
       return;
     }
 
@@ -31,15 +30,13 @@ export default function ResetPasswordPage() {
     setLoading(true);
 
     try {
-      const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://doesmcrkuorjkmwtrbbv.supabase.co";
-      const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
-      const supabase = createClient(url, key);
-
-      const { error: updateError } = await supabase.auth.updateUser({
-        password,
+      const res = await fetch("/auth/email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "update_password", password }),
       });
-
-      if (updateError) throw updateError;
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || "Failed to update password. Your recovery link may have expired.");
 
       setSuccess(true);
       setTimeout(() => {
@@ -87,7 +84,7 @@ export default function ResetPasswordPage() {
               <input
                 type="password"
                 required
-                minLength={6}
+                minLength={8}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
@@ -102,7 +99,7 @@ export default function ResetPasswordPage() {
               <input
                 type="password"
                 required
-                minLength={6}
+                minLength={8}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="••••••••"

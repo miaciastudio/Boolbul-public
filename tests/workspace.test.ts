@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { edgeSchemaSql } from "./helpers/edge-schema";
 import { PGlite } from "@electric-sql/pglite";
 import { createClient, type Client } from "@libsql/client";
 import { NextRequest } from "next/server";
@@ -23,7 +24,7 @@ import { GET, POST } from "@/app/api/workspace/setup/route";
 
 const phaseOne = readFileSync(new URL("../supabase/migrations/202611050001_phase_one.sql", import.meta.url), "utf8");
 const migration = readFileSync(new URL("../supabase/migrations/202611060001_workspace_onboarding.sql", import.meta.url), "utf8");
-const edgeMigration = readFileSync(new URL("../turso/migrations/001_phase_one.sql", import.meta.url), "utf8");
+const edgeMigration = edgeSchemaSql();
 const userId = "11111111-1111-4111-8111-111111111111";
 const otherUser = "22222222-2222-4222-8222-222222222222";
 const tenantId = "33333333-3333-4333-8333-333333333333";

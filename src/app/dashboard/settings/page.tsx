@@ -1,365 +1,194 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import Image from "next/image";
-import { BrutalCard } from "@/components/ui-primitives/BrutalCard";
+import { useCallback, useEffect, useState } from "react";
 import { BrutalButton } from "@/components/ui-primitives/BrutalButton";
-import { createClient } from "@supabase/supabase-js";
 
-interface TenantSettings {
-  id: string;
-  name: string;
-  slug: string;
-  publicKey: string;
-  planTier: string;
-  billingStatus: string;
-  gateway: string;
-  createdAt: string;
+type Workspace = { name: string; publicKey: string; gateway: string; primaryDomain: string | null; plan: string; canManage: boolean; email: string | null };
+type Notice = { kind: "ok" | "error"; text: string } | null;
+
+const field = "w-full border-2 border-pitch bg-white p-2.5 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-lime disabled:opacity-60";
+const card = "space-y-3 border-4-black bg-cream p-5 shadow-brutal";
+
+function NoticeBox({ notice }: { notice: Notice }) {
+  if (!notice) return null;
+  return <p role={notice.kind === "error" ? "alert" : "status"} className={`border-2 border-pitch p-2 font-mono text-xs font-bold ${notice.kind === "ok" ? "bg-lime" : "bg-rose-100 text-red-900"}`}>{notice.text}</p>;
 }
 
 export default function SettingsPage() {
-  const [loading, setLoading] = useState(true);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [tenant, setTenant] = useState<TenantSettings | null>(null);
-  const [newSecret, setNewSecret] = useState<string | null>(null);
+  const [ws, setWs] = useState<Workspace | null>(null);
+  const [loadError, setLoadError] = useState(false);
+  const [name, setName] = useState("");
+  const [gateway, setGateway] = useState("dodo_payments");
+  const [domain, setDomain] = useState("");
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [settingsNotice, setSettingsNotice] = useState<Notice>(null);
+  const [secret, setSecret] = useState<string | null>(null);
   const [rotating, setRotating] = useState(false);
-  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [confirmRotate, setConfirmRotate] = useState(false);
+  const [secretNotice, setSecretNotice] = useState<Notice>(null);
+  const [copied, setCopied] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function loadSettings() {
-      try {
-        const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://doesmcrkuorjkmwtrbbv.supabase.co";
-        const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
-        if (!key) return;
-
-        const supabase = createClient(url, key);
-        const { data: { session } } = await supabase.auth.getSession();
-
-        if (session?.user) {
-          setUserEmail(session.user.email || null);
-
-          const { data: memberships } = await supabase
-            .from("tenant_memberships")
-            .select("tenant_id, role")
-            .eq("user_id", session.user.id)
-            .limit(1);
-
-          if (memberships && memberships.length > 0) {
-            const tId = memberships[0].tenant_id;
-            const { data: t } = await supabase
-              .from("tenants")
-              .select("id, name, slug, public_key, plan_tier, created_at")
-              .eq("id", tId)
-              .single();
-
-            if (t) {
-              setTenant({
-                id: t.id,
-                name: t.name || "Main Workspace",
-                slug: t.slug,
-                publicKey: t.public_key,
-                planTier: t.plan_tier || "starter",
-                billingStatus: "active",
-                gateway: "Dodo Payments",
-                createdAt: t.created_at || new Date().toISOString(),
-              });
-            }
-          }
-        }
-      } catch (err) {
-        console.error("Failed to load settings:", err);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadSettings();
-  }, []);
-
-  // 1. Secret Key Rotation
-  const handleRotateSecret = async () => {
-    if (!confirm("Are you sure you want to rotate your signing secret? You will need to update your server-side environment variables immediately.")) {
-      return;
-    }
-
-    setRotating(true);
-    setStatusMessage(null);
-
-    let generatedSecret = "";
+  const load = useCallback(async () => {
+    setLoadError(false);
     try {
-      // Generate new secure random secret: bb_sec_live_<32 hex chars>
-      const randomBytes = new Uint8Array(16);
-      crypto.getRandomValues(randomBytes);
-      const hex = Array.from(randomBytes).map((b) => b.toString(16).padStart(2, "0")).join("");
-      generatedSecret = `bb_sec_live_${hex}`;
+      const res = await fetch("/api/workspace/overview", { cache: "no-store" });
+      if (res.status === 401) { window.location.assign("/login?error=session_expired&next=/dashboard/settings"); return; }
+      const json = await res.json();
+      if (!res.ok) throw new Error();
+      const w = json.workspace as Workspace;
+      setWs(w);
+      setName(w.name);
+      setGateway(w.gateway);
+      setDomain(w.primaryDomain ?? "");
+    } catch {
+      setLoadError(true);
+    }
+  }, []);
+  useEffect(() => { void load(); }, [load]);
 
-      // Update Supabase tenant
-      const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://doesmcrkuorjkmwtrbbv.supabase.co";
-      const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
-      const supabase = createClient(url, key);
+  const copy = (value: string, key: string) => {
+    void navigator.clipboard.writeText(value).then(() => { setCopied(key); setTimeout(() => setCopied(null), 1500); });
+  };
 
-      if (tenant?.id) {
-        try {
-          await supabase
-            .from("tenants")
-            .update({
-              signing_secret: generatedSecret,
-              updated_at: new Date().toISOString(),
-            })
-            .eq("id", tenant.id);
-        } catch {}
-        localStorage.setItem(`boolbul_secret_${tenant.id}`, generatedSecret);
-      }
+  const saveSettings = async () => {
+    setSavingSettings(true);
+    setSettingsNotice(null);
+    try {
+      const res = await fetch("/api/workspace/settings", {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, gateway, primaryDomain: domain.trim() || null }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message);
+      setWs((w) => w && { ...w, name: json.name, gateway: json.gateway, primaryDomain: json.primaryDomain });
+      setDomain(json.primaryDomain ?? "");
+      setSettingsNotice({ kind: "ok", text: "Workspace settings saved." });
+    } catch (e) {
+      setSettingsNotice({ kind: "error", text: e instanceof Error ? e.message : "Settings were not saved." });
+    } finally {
+      setSavingSettings(false);
+    }
+  };
 
-      setNewSecret(generatedSecret);
-      setStatusMessage("✓ Signing secret rotated successfully! Copy your new key below.");
-    } catch (err: unknown) {
-      console.error("Rotation error:", err);
-      setNewSecret(generatedSecret);
-      setStatusMessage("✓ Signing secret rotated successfully! Copy your new key below.");
+  const rotate = async () => {
+    setRotating(true);
+    setSecretNotice(null);
+    try {
+      const res = await fetch("/api/workspace/secret", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message);
+      setSecret(json.signingSecret);
+      setConfirmRotate(false);
+      setSecretNotice({ kind: "ok", text: "New secret issued. Copy it now — it won't be shown again. The old secret stopped working." });
+    } catch (e) {
+      setSecretNotice({ kind: "error", text: e instanceof Error ? e.message : "Rotation failed." });
     } finally {
       setRotating(false);
     }
   };
 
-  // 2. Export Workspace Data (JSON)
-  const handleExportData = async () => {
-    try {
-      const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://doesmcrkuorjkmwtrbbv.supabase.co";
-      const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
-      const supabase = createClient(url, key);
-
-      let exportPayload: Record<string, any> = {
-        tenant,
-        userEmail,
-        exportedAt: new Date().toISOString(),
-      };
-
-      if (tenant?.id) {
-        const { data: config } = await supabase
-          .from("widget_configs")
-          .select("*")
-          .eq("tenant_id", tenant.id)
-          .maybeSingle();
-
-        const { data: events } = await supabase
-          .from("churn_events")
-          .select("*")
-          .eq("tenant_id", tenant.id)
-          .limit(100);
-
-        exportPayload.widgetConfig = config;
-        exportPayload.retentionEvents = events;
-      }
-
-      const blob = new Blob([JSON.stringify(exportPayload, null, 2)], { type: "application/json" });
-      const dlUrl = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = dlUrl;
-      a.download = `boolbul-workspace-backup-${tenant?.slug || "backup"}-${new Date().toISOString().slice(0, 10)}.json`;
-      a.click();
-      URL.revokeObjectURL(dlUrl);
-    } catch (err) {
-      console.error("Export error:", err);
-    }
+  const exportJson = async () => {
+    const [overview, widget] = await Promise.all([
+      fetch("/api/workspace/overview").then((r) => r.json()),
+      fetch("/api/workspace/widget").then((r) => r.json()),
+    ]);
+    const blob = new Blob([JSON.stringify({ exportedAt: new Date().toISOString(), workspace: overview.workspace, offers: overview.offers, widget: widget.config, last30Days: overview.last30Days }, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `boolbul-workspace-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
-  // 3. Export Audit Logs (CSV)
-  const handleExportLogs = async () => {
-    try {
-      const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://doesmcrkuorjkmwtrbbv.supabase.co";
-      const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
-      const supabase = createClient(url, key);
+  if (loadError) {
+    return (
+      <main className="grid min-h-screen place-items-center bg-cobalt p-4 paper-grain">
+        <div className="space-y-4 border-4-black bg-cream p-6 text-center shadow-brutal">
+          <p className="font-mono text-sm font-bold">Settings could not be loaded.</p>
+          <BrutalButton onClick={() => void load()}>Retry</BrutalButton>
+        </div>
+      </main>
+    );
+  }
+  if (!ws) return <main className="grid min-h-screen place-items-center bg-cobalt font-mono font-black text-cream paper-grain">Loading settings…</main>;
 
-      let events: any[] = [];
-      if (tenant?.id) {
-        const { data } = await supabase
-          .from("churn_events")
-          .select("*")
-          .eq("tenant_id", tenant.id)
-          .limit(200);
-        events = data || [];
-      }
-
-      const headers = ["ID", "Customer ID", "Subscription ID", "MRR (Cents)", "Status", "Exit Reason", "Timestamp"];
-      const rows = events.map((e) => [
-        e.id,
-        e.customer_id,
-        e.subscription_id,
-        e.mrr_cents,
-        e.status,
-        `"${(e.exit_reason || "").replace(/"/g, '""')}"`,
-        e.created_at,
-      ]);
-
-      const csvContent = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
-      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-      const dlUrl = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = dlUrl;
-      a.download = `boolbul-audit-ledger-${new Date().toISOString().slice(0, 10)}.csv`;
-      a.click();
-      URL.revokeObjectURL(dlUrl);
-    } catch (err) {
-      console.error("CSV Export error:", err);
-    }
-  };
-
+  const disabled = !ws.canManage;
   return (
-    <main className="bg-cobalt min-h-screen p-4 md:p-8 paper-grain">
-      <div className="max-w-5xl mx-auto space-y-6">
-        {/* Cockpit Top Bar */}
-        <header className="bg-cream border-4-black shadow-brutal p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <Link
-              href="/"
-              className="w-10 h-10 bg-lime border-3 border-pitch flex items-center justify-center shadow-brutal-sm"
-            >
-              <Image src="/brand/logo.png" alt="BoolBul" width={32} height={32} />
-            </Link>
-            <div>
-              <span className="font-black text-xl tracking-tight block">WORKSPACE SETTINGS & BACKUP</span>
-              <span className="font-mono text-xs text-zinc-600 block">
-                Workspace: <strong className="text-pitch">{tenant?.name || "Main Workspace"}</strong>
-                {userEmail && <span className="ml-2 text-zinc-500 font-bold">({userEmail})</span>}
-              </span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <Link href="/dashboard">
-              <BrutalButton variant="white" size="sm">
-                ← Back to Cockpit
-              </BrutalButton>
-            </Link>
-            <Link href="/dashboard/customizer">
-              <BrutalButton variant="lime" size="sm">
-                🎨 Theme Customizer
-              </BrutalButton>
-            </Link>
-          </div>
+    <main className="min-h-screen bg-cobalt p-3 paper-grain sm:p-6">
+      <div className="mx-auto max-w-3xl space-y-5">
+        <header className="border-4-black bg-cream p-5 shadow-brutal">
+          <Link href="/dashboard" className="font-mono text-xs font-bold underline">← Dashboard</Link>
+          <h1 className="text-3xl font-black uppercase tracking-tight">Settings</h1>
+          <p className="font-mono text-xs text-zinc-700">{ws.email} · plan {ws.plan.toUpperCase()}</p>
         </header>
 
-        {statusMessage && (
-          <div className="border-3 border-pitch bg-lime p-3 text-xs font-mono font-bold text-pitch shadow-brutal-sm">
-            {statusMessage}
-          </div>
-        )}
+        {disabled && <p className="border-3 border-pitch bg-amber-100 p-3 font-mono text-sm font-bold">View-only access. Ask an owner or admin to change settings.</p>}
 
-        {/* Section 1: Workspace Identity */}
-        <BrutalCard variant="cream" className="p-6 border-4-black shadow-brutal space-y-4">
-          <div className="border-b-2 border-pitch pb-3">
-            <h2 className="text-xl font-black uppercase text-pitch">1. Workspace Identity & Keys</h2>
-            <p className="font-mono text-xs text-zinc-600">Your cryptographic credentials and gateway settings.</p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 font-mono text-xs">
-            <div className="space-y-1 p-3 bg-white border-2 border-pitch">
-              <span className="text-zinc-500 uppercase block font-bold">Tenant ID:</span>
-              <span className="text-pitch font-bold break-all select-all">{tenant?.id || "Loading..."}</span>
+        <section className={card}>
+          <h2 className="text-xl font-black uppercase">Workspace</h2>
+          <label className="block font-mono text-xs font-black uppercase">Name
+            <input className={`${field} mt-1`} disabled={disabled} maxLength={80} value={name} onChange={(e) => setName(e.target.value)} />
+          </label>
+          <label className="block font-mono text-xs font-black uppercase">App domain (optional)
+            <input className={`${field} mt-1`} disabled={disabled} placeholder="app.example.com" value={domain} onChange={(e) => setDomain(e.target.value)} />
+          </label>
+          <fieldset disabled={disabled}>
+            <legend className="mb-1 font-mono text-xs font-black uppercase">Billing gateway</legend>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {[{ id: "dodo_payments", label: "Dodo Payments" }, { id: "stripe", label: "Stripe" }].map((g) => (
+                <button key={g.id} type="button" aria-pressed={gateway === g.id} onClick={() => setGateway(g.id)}
+                  className={`border-3 border-pitch p-3 text-left font-black ${gateway === g.id ? "bg-lime shadow-brutal-sm" : "bg-white"}`}>{g.label}</button>
+              ))}
             </div>
+            <p className="mt-2 font-mono text-[11px] text-zinc-600">Paddle, Lemon Squeezy, Polar and Chargebee are coming soon.</p>
+          </fieldset>
+          <BrutalButton size="sm" disabled={disabled || savingSettings} onClick={() => void saveSettings()}>{savingSettings ? "Saving…" : "Save workspace"}</BrutalButton>
+          <NoticeBox notice={settingsNotice} />
+        </section>
 
-            <div className="space-y-1 p-3 bg-white border-2 border-pitch">
-              <span className="text-zinc-500 uppercase block font-bold">Connected Gateway:</span>
-              <span className="text-pitch font-black bg-lime px-2 py-0.5 border border-pitch inline-block">
-                {tenant?.gateway || "Dodo Payments"}
-              </span>
+        <section className={card}>
+          <h2 className="text-xl font-black uppercase">API keys</h2>
+          <div>
+            <span className="block font-mono text-xs font-black uppercase">Public key — safe in browser code</span>
+            <div className="mt-1 flex items-center gap-2">
+              <code className="min-w-0 flex-1 truncate border-2 border-pitch bg-white p-2 font-mono text-xs">{ws.publicKey}</code>
+              <button type="button" onClick={() => copy(ws.publicKey, "pub")} className="border-2 border-pitch bg-white px-2 py-1.5 font-mono text-xs font-black">{copied === "pub" ? "Copied ✓" : "Copy"}</button>
             </div>
-
-            <div className="space-y-1 p-3 bg-white border-2 border-pitch md:col-span-2">
-              <div className="flex items-center justify-between">
-                <span className="text-zinc-500 uppercase block font-bold">Public Key (Safe for Web Client):</span>
-                <span className="text-emerald-700 font-bold text-[10px]">READ-ONLY</span>
+          </div>
+          <div className="space-y-2">
+            <span className="block font-mono text-xs font-black uppercase">Signing secret — server only</span>
+            <p className="font-mono text-xs text-zinc-700">Your server uses it to verify offers (<code>BOOLBUL_SIGNING_SECRET</code>). It stays on our servers, is never sent to browsers, and is shown to you only once, right after you rotate.</p>
+            {secret ? (
+              <div className="flex items-center gap-2">
+                <code className="min-w-0 flex-1 break-all border-2 border-pitch bg-pitch p-2 font-mono text-xs text-lime">{secret}</code>
+                <button type="button" onClick={() => copy(secret, "sec")} className="border-2 border-pitch bg-white px-2 py-1.5 font-mono text-xs font-black">{copied === "sec" ? "Copied ✓" : "Copy"}</button>
               </div>
-              <code className="text-pitch font-bold text-sm bg-zinc-100 p-2 border border-zinc-300 block break-all select-all">
-                {tenant?.publicKey || "bb_pub_loading..."}
-              </code>
-            </div>
-          </div>
-        </BrutalCard>
-
-        {/* Section 2: Secret Rotation */}
-        <BrutalCard variant="cream" className="p-6 border-4-black shadow-brutal space-y-4">
-          <div className="border-b-2 border-pitch pb-3 flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-black uppercase text-pitch">2. Server Signing Secret Rotation</h2>
-              <p className="font-mono text-xs text-zinc-600">
-                Rotates the HMAC-SHA256 key used to verify offer tokens.
-              </p>
-            </div>
-            <span className="bg-blush border-2 border-pitch px-2 py-1 font-mono text-xs font-bold text-pitch">
-              SECURITY SHIELD
-            </span>
-          </div>
-
-          {newSecret ? (
-            <div className="p-4 bg-lime/30 border-3 border-pitch space-y-2 font-mono">
-              <p className="text-xs font-bold text-pitch">
-                ⚡ NEW SIGNING SECRET GENERATED (COPY NOW - WILL NOT BE SHOWN AGAIN):
-              </p>
-              <code className="text-xs font-black bg-white p-3 border-2 border-pitch block select-all break-all">
-                {newSecret}
-              </code>
-              <p className="text-[11px] text-zinc-700">
-                Update <strong className="text-pitch">BOOLBUL_SIGNING_SECRET</strong> in your SaaS backend environment variables.
-              </p>
-            </div>
-          ) : (
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 bg-white border-2 border-pitch">
-              <div className="font-mono text-xs text-zinc-700">
-                <span className="font-bold text-pitch block">Need to rotate compromised keys?</span>
-                Instantly generates a new cryptographically secure secret and invalidates previous nonces.
+            ) : confirmRotate ? (
+              <div className="space-y-2 border-3 border-pitch bg-amber-100 p-3">
+                <p className="font-mono text-xs font-bold">Rotating immediately invalidates the current secret. Offers will fail open (customers can still cancel) until your server has the new one.</p>
+                <div className="flex gap-2">
+                  <BrutalButton size="sm" variant="crimson" disabled={rotating} onClick={() => void rotate()}>{rotating ? "Rotating…" : "Yes, rotate now"}</BrutalButton>
+                  <BrutalButton size="sm" variant="white" onClick={() => setConfirmRotate(false)}>Keep current</BrutalButton>
+                </div>
               </div>
-              <BrutalButton
-                type="button"
-                variant="white"
-                size="sm"
-                className="shrink-0 text-xs"
-                onClick={handleRotateSecret}
-                disabled={rotating}
-              >
-                {rotating ? "Rotating..." : "Rotate Secret Key ↺"}
-              </BrutalButton>
-            </div>
-          )}
-        </BrutalCard>
-
-        {/* Section 3: Data Export & Audit Backup */}
-        <BrutalCard variant="cream" className="p-6 border-4-black shadow-brutal space-y-4">
-          <div className="border-b-2 border-pitch pb-3">
-            <h2 className="text-xl font-black uppercase text-pitch">3. Account Export & Compliance Audit Backup</h2>
-            <p className="font-mono text-xs text-zinc-600">Download your full retention history, widget settings, and audit ledger.</p>
+            ) : (
+              <BrutalButton size="sm" variant="white" disabled={disabled} onClick={() => setConfirmRotate(true)}>Rotate & reveal new secret</BrutalButton>
+            )}
+            <NoticeBox notice={secretNotice} />
           </div>
+        </section>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="p-4 bg-white border-2 border-pitch flex flex-col justify-between space-y-3">
-              <div>
-                <h3 className="font-black text-sm uppercase">Full Workspace JSON Backup</h3>
-                <p className="font-mono text-xs text-zinc-600 mt-1">
-                  Exports your tenant configuration, live widget theme matrix, and retention rules.
-                </p>
-              </div>
-              <BrutalButton variant="white" size="sm" onClick={handleExportData} className="w-full text-xs">
-                Export Data (JSON) ↓
-              </BrutalButton>
-            </div>
-
-            <div className="p-4 bg-white border-2 border-pitch flex flex-col justify-between space-y-3">
-              <div>
-                <h3 className="font-black text-sm uppercase">Retention Audit Ledger (CSV)</h3>
-                <p className="font-mono text-xs text-zinc-600 mt-1">
-                  Complete timestamped log of deflected cancellations and FTC-compliant exits.
-                </p>
-              </div>
-              <BrutalButton variant="lime" size="sm" onClick={handleExportLogs} className="w-full text-xs">
-                Download Audit CSV ↓
-              </BrutalButton>
-            </div>
+        <section className={card}>
+          <h2 className="text-xl font-black uppercase">Your data</h2>
+          <div className="flex flex-wrap gap-2">
+            <BrutalButton size="sm" variant="white" onClick={() => void exportJson()}>Export workspace (JSON)</BrutalButton>
+            <a href="/api/workspace/ledger?format=csv"><BrutalButton size="sm" variant="white">Download ledger (CSV)</BrutalButton></a>
           </div>
-        </BrutalCard>
+          <p className="font-mono text-[11px] text-zinc-600">Exports never include secrets. The CSV holds up to 5,000 most recent sessions.</p>
+        </section>
       </div>
     </main>
   );
 }
-

@@ -4,7 +4,7 @@ import { DuctTapeBadge } from "@/components/ui-primitives/DuctTapeBadge";
 
 export const metadata = {
   title: "Documentation & Architecture Overview | BoolBul",
-  description: "Learn how BoolBul intercepts in-app subscription cancellations with <10ms edge latency and zero dark patterns.",
+  description: "Learn how BoolBul intercepts in-app subscription cancellations at the edge, with a 1.5s fail-open and zero dark patterns.",
 };
 
 export default function DocsOverviewPage() {
@@ -42,14 +42,14 @@ export default function DocsOverviewPage() {
         <div className="p-4 bg-zinc-950 text-lime font-mono text-xs border-3 border-pitch overflow-x-auto leading-relaxed">
 {`+---------------------------------------------------------------------------------+
 |                                 USER BROWSER                                    |
-|  [Cancel Subscription Button]  -->  openRetentionModal({ publicKey, ... })      |
+|  [Cancel Subscription Button]  -->  BoolBul.open({ publicKey, ... })            |
 +---------------------------------------------------------------------------------+
                                        |
                                        | (1) POST /api/v1/intercept/init (publicKey)
                                        v
 +---------------------------------------------------------------------------------+
 |                       BOOLBUL EDGE RUNTIME (Cloudflare)                        |
-|  - Queries Turso LibSQL Edge Replicas (<10ms globally)                          |
+|  - Reads offer rules from the Turso libSQL edge database                       |
 |  - Evaluates MRR triggers, active discounts, and pause rules                   |
 |  - Generates tamper-proof initToken & single-use nonce                          |
 +---------------------------------------------------------------------------------+

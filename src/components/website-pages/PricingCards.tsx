@@ -8,49 +8,49 @@ export function PricingCards() {
     {
       name: "Starter",
       price: "$19",
-      mrrLimit: "For apps up to $5,000 MRR",
+      mrrLimit: "Up to 500 saved subscribers / month",
       features: [
-        { name: "In-app cancellation flow", status: "Integration required" },
-        { name: "Billing pauses & discounts", status: "Dodo integration required" },
-        { name: "Signed JWT offer verification", status: "Available" },
-        { name: "Fail-open cancellation handling", status: "Integration required" },
-        { name: "Exit-reason survey", status: "Available" },
+        { name: "In-app cancellation flow (web + mobile)", status: "Included" },
+        { name: "Exit survey mapped to gateway feedback", status: "Included" },
+        { name: "Pause & discount offers — Dodo Payments + Stripe", status: "Included" },
+        { name: "Live customizer, 4 WCAG-AA themes", status: "Included" },
+        { name: "1.5s fail-open + FTC click-to-cancel", status: "Included" },
       ],
-      cta: "Choose Starter",
-      href: "/login?next=/dashboard",
+      cta: "Start with Starter",
+      href: "/login?mode=signup",
       variant: "cream" as const,
       badge: null,
     },
     {
       name: "Pro Punk",
       price: "$49",
-      mrrLimit: "For apps up to $25,000 MRR",
+      mrrLimit: "Unlimited saved subscribers",
       features: [
-        { name: "Everything in Starter", status: "Available" },
-        { name: "Churn analytics dashboard", status: "Preview only" },
-        { name: "Discord & Slack alerts", status: "Not available" },
-        { name: "Offer A/B testing", status: "Not available" },
-        { name: "Custom themes & multiple workspaces", status: "Not available" },
+        { name: "Everything in Starter", status: "Included" },
+        { name: "Unlimited saves & edge rules", status: "Included" },
+        { name: "Saved-MRR dashboard & CSV ledger", status: "Included" },
+        { name: "Slack & Discord alerts", status: "Coming soon" },
+        { name: "Offer A/B testing", status: "Coming soon" },
       ],
-      cta: "Choose Pro",
-      href: "/login?next=/dashboard",
+      cta: "Go Pro",
+      href: "/login?mode=signup",
       variant: "lime" as const,
       badge: "PRO",
     },
     {
       name: "Scale Crusher",
       price: "$99",
-      mrrLimit: "Planned tier · Not available for purchase",
+      mrrLimit: "Coming soon · join from your dashboard",
       features: [
-        { name: "Multi-gateway support", status: "Not available" },
-        { name: "White-label branding", status: "Not available" },
-        { name: "Custom retention routing", status: "Not available" },
-        { name: "Unlimited workspaces & team seats", status: "Not available" },
+        { name: "Paddle, Lemon Squeezy, Polar, Chargebee", status: "Coming soon" },
+        { name: "White-label widget", status: "Coming soon" },
+        { name: "Custom retention routing", status: "Coming soon" },
+        { name: "Team seats & multiple workspaces", status: "Coming soon" },
       ],
-      cta: "Scale is not available yet",
+      cta: "Coming soon",
       href: null,
       variant: "pink" as const,
-      badge: "PLANNED",
+      badge: "SOON",
     },
   ];
 
@@ -97,7 +97,7 @@ export function PricingCards() {
                 {p.features.map((feature) => (
                   <li key={feature.name} className="space-y-1">
                     <span className="block font-bold leading-relaxed">{feature.name}</span>
-                    <span className={`inline-block border border-pitch px-2 py-1 text-xs font-medium ${feature.status === "Not available" || feature.status === "Preview only" ? "bg-white text-zinc-700" : "bg-white/80 text-pitch"}`}>
+                    <span className={`inline-block border border-pitch px-2 py-1 text-xs font-medium ${feature.status === "Coming soon" ? "bg-white text-zinc-700" : "bg-white/80 text-pitch"}`}>
                       {feature.status}
                     </span>
                   </li>

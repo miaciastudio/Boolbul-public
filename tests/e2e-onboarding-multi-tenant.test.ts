@@ -1,15 +1,15 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { readFileSync } from "node:fs";
+import { edgeSchemaSql } from "./helpers/edge-schema";
 import { PGlite } from "@electric-sql/pglite";
 import { createClient } from "@libsql/client";
 import { NextRequest } from "next/server";
 import { GET as getWidgetConfig } from "@/app/api/v1/widget-config/[publicKey]/route";
-import { validateFTCCompliance } from "@/lib/widget-themes/compliance";
-import { THEME_PRESETS } from "@/lib/widget-themes/tokens";
+import { sanitizeEscapeHatch, THEMES } from "@boolbul/sdk";
 
 const phaseOneSql = readFileSync(new URL("../supabase/migrations/202611050001_phase_one.sql", import.meta.url), "utf8");
 const onboardingSql = readFileSync(new URL("../supabase/migrations/202611060001_workspace_onboarding.sql", import.meta.url), "utf8");
-const edgeSql = readFileSync(new URL("../turso/migrations/001_phase_one.sql", import.meta.url), "utf8");
+const edgeSql = edgeSchemaSql();
 
 describe("Synthetic 5-Account E2E Multi-Tenant Isolation & Flow Tests", () => {
   let pg: PGlite;
@@ -91,8 +91,7 @@ describe("Synthetic 5-Account E2E Multi-Tenant Isolation & Flow Tests", () => {
     expect(events.rows[0].status).toBe("rescued_discount");
     expect(events.rows[0].mrr_cents).toBe(4900);
 
-    const theme = THEME_PRESETS.neo_brutalist;
-    expect(theme.modalBorder).toContain("border-4 border-black");
+    expect(THEMES.neo_brutalist.borderWidth).toBeGreaterThanOrEqual(3);
   });
 
   // TENANT 2: Email/Password Signup -> Stripe -> Minimal Slate -> Proceed to Cancel (FTC Escape Hatch)
@@ -122,8 +121,7 @@ describe("Synthetic 5-Account E2E Multi-Tenant Isolation & Flow Tests", () => {
     );
 
     // FTC Compliance validation on escape hatch
-    const compliance = validateFTCCompliance("No thanks, cancel now");
-    expect(compliance.valid).toBe(true);
+    expect(sanitizeEscapeHatch("No thanks, cancel now")).toBe("No thanks, cancel now");
 
     // Simulate Exit Event (Customer proceeded to cancel without taking an offer)
     await pg.query(
@@ -209,14 +207,12 @@ describe("Synthetic 5-Account E2E Multi-Tenant Isolation & Flow Tests", () => {
   });
 
   // TENANT 5: Rapid Settings Update & CDN Edge Cache Headers Verification
-  it("Tenant 5: Rapid settings update & theme switch maintains s-maxage=3600 CDN cache", async () => {
+  it("Tenant 5: settings updates reach customers within the short CDN cache window", async () => {
     const req = new NextRequest("https://boolbul.com/api/v1/widget-config/bb_pub_test_cdn_555");
-    const res = await getWidgetConfig(req, { params: { publicKey: "bb_pub_test_cdn_555" } });
+    const res = await getWidgetConfig(req, { params: Promise.resolve({ publicKey: "bb_pub_test_cdn_555" }) });
 
     expect(res.status).toBe(200);
-    expect(res.headers.get("Cache-Control")).toContain("s-maxage=3600");
-    expect(res.headers.get("CDN-Cache-Control")).toBe("max-age=3600");
-    expect(res.headers.get("Cloudflare-CDN-Cache-Control")).toBe("max-age=3600");
+    expect(res.headers.get("Cache-Control")).toContain("s-maxage=60");
 
     const data = await res.json();
     expect(data.themePreset).toBeDefined();

@@ -39,12 +39,12 @@ export function validateBinding(payload: JWTPayload): OfferBinding & { nonce: st
   return { tenantId, customerId, subscriptionId, nonce };
 }
 
-export function validateLifetime(payload: JWTPayload): number {
+export function validateLifetime(payload: JWTPayload, ttlSeconds = OFFER_TTL_SECONDS): number {
   const { iat, exp } = payload;
   const now = Math.floor(Date.now() / 1000);
   if (typeof iat !== "number" || typeof exp !== "number" ||
       !Number.isSafeInteger(iat) || !Number.isSafeInteger(exp) ||
-      iat > now || exp - iat !== OFFER_TTL_SECONDS) {
+      iat > now || exp - iat !== ttlSeconds) {
     throw new errors.JWTClaimValidationFailed("Invalid token lifetime", payload, "exp");
   }
   return exp;

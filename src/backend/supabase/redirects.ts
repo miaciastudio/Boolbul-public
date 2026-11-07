@@ -27,7 +27,7 @@ export function safeNextPath(value: unknown): string {
   }
   // Validate raw paths before URL parsing can normalize traversal segments.
   const path = value.split(/[?#]/, 1)[0];
-  if (!/^\/(dashboard|onboarding)(?:\/[A-Za-z0-9_-]+)*\/?$/.test(path)) return "/dashboard";
+  if (!/^\/(dashboard|onboarding|auth\/reset-password)(?:\/[A-Za-z0-9_-]+)*\/?$/.test(path)) return "/dashboard";
   return value;
 }
 

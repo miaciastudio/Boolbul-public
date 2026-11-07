@@ -2,12 +2,19 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { BrutalButton } from "@/components/ui-primitives/BrutalButton";
-import { createClient } from "@supabase/supabase-js";
+
+const LOGIN_ERRORS: Record<string, string> = {
+  configuration: "Sign-in is not configured yet. Please try again later.",
+  unavailable: "Sign-in is temporarily unavailable. Please try again.",
+  session_expired: "Please sign in to continue. Your session may have expired.",
+  oauth_failed: "Google sign-in could not be completed. Please try again.",
+  workspace_unavailable: "Your workspace is not available yet. Please try signing in again.",
+  invalid_request: "This request could not be verified. Please try again from this page.",
+  signout_failed: "Sign-out could not be completed. Please try again.",
+};
 
 export default function LoginPage() {
-  const router = useRouter();
   const [authMode, setAuthMode] = useState<"signin" | "signup" | "forgot">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -17,44 +24,28 @@ export default function LoginPage() {
   const [nextUrl, setNextUrl] = useState("/dashboard");
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      const next = params.get("next");
-      if (next && next.startsWith("/")) {
-        setNextUrl(next);
-      }
-    }
+    const params = new URLSearchParams(window.location.search);
+    const next = params.get("next");
+    if (next && next.startsWith("/") && !next.startsWith("//")) setNextUrl(next);
+    const code = params.get("error");
+    if (code && LOGIN_ERRORS[code]) setError(LOGIN_ERRORS[code]);
+    if (params.get("mode") === "signup") setAuthMode("signup");
   }, []);
 
-  const getSupabase = () => {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://doesmcrkuorjkmwtrbbv.supabase.co";
-    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
-    if (!key) throw new Error("Supabase Anon Key is missing");
-    return createClient(url, key);
-  };
-
-  const handleGoogleLogin = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const supabase = getSupabase();
-
-      const origin = typeof window !== "undefined" ? window.location.origin : "https://boolbul.com";
-      const redirectUri = `${origin}${nextUrl}`;
-
-      const { error: authError } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: redirectUri,
-        },
-      });
-
-      if (authError) throw authError;
-    } catch (err: unknown) {
-      console.error("Login error:", err);
-      setError(err instanceof Error ? err.message : "Failed to initiate Google sign in");
-      setLoading(false);
-    }
+  // Google sign-in runs on the server (POST /auth/login) so the session lands in httpOnly cookies.
+  const handleGoogleLogin = () => {
+    setLoading(true);
+    setError(null);
+    const form = document.createElement("form");
+    form.method = "POST";
+    form.action = "/auth/login";
+    const input = document.createElement("input");
+    input.type = "hidden";
+    input.name = "next";
+    input.value = nextUrl;
+    form.append(input);
+    document.body.append(form);
+    form.submit();
   };
 
   const handleEmailAuth = async (e: React.FormEvent) => {
@@ -63,59 +54,31 @@ export default function LoginPage() {
     setSuccessMessage(null);
 
     const emailClean = email.trim();
-    if (!emailClean || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailClean)) {
-      setError("Please provide a valid email address");
+    if (!emailClean || !/^[^s@]+@[^s@]+.[^s@]+$/.test(emailClean)) {
+      setError("Please enter a valid email address");
       return;
     }
-
-    if (authMode !== "forgot" && (!password || password.length < 6)) {
-      setError("Password must be at least 6 characters");
+    if (authMode === "signup" && password.length < 8) {
+      setError("Use at least 8 characters for your password");
       return;
     }
 
     setLoading(true);
-
     try {
-      const supabase = getSupabase();
-
-      if (authMode === "signin") {
-        const { data, error: signInError } = await supabase.auth.signInWithPassword({
-          email: emailClean,
-          password,
-        });
-
-        if (signInError) throw signInError;
-        if (data.session) {
-          router.push(nextUrl);
-        }
-      } else if (authMode === "signup") {
-        const origin = typeof window !== "undefined" ? window.location.origin : "https://boolbul.com";
-        const { data, error: signUpError } = await supabase.auth.signUp({
-          email: emailClean,
-          password,
-          options: {
-            emailRedirectTo: `${origin}${nextUrl}`,
-          },
-        });
-
-        if (signUpError) throw signUpError;
-
-        if (data.session) {
-          router.push(nextUrl);
-        } else {
-          setSuccessMessage("Account created! Check your email to confirm your account, then sign in.");
-        }
-      } else if (authMode === "forgot") {
-        const origin = typeof window !== "undefined" ? window.location.origin : "https://boolbul.com";
-        const { error: resetError } = await supabase.auth.resetPasswordForEmail(emailClean, {
-          redirectTo: `${origin}/auth/reset-password`,
-        });
-
-        if (resetError) throw resetError;
-        setSuccessMessage("Password reset email sent! Check your inbox for the link.");
+      const action = authMode === "signin" ? "sign_in" : authMode === "signup" ? "sign_up" : "reset";
+      const res = await fetch("/auth/email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, email: emailClean, password, next: nextUrl }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || "Authentication request failed");
+      if (data.redirect) {
+        window.location.assign(data.redirect);
+        return;
       }
+      setSuccessMessage(data.message || "Done.");
     } catch (err: unknown) {
-      console.error("Auth error:", err);
       setError(err instanceof Error ? err.message : "Authentication request failed");
     } finally {
       setLoading(false);
@@ -234,7 +197,7 @@ export default function LoginPage() {
                 <input
                   type="password"
                   required
-                  minLength={6}
+                  minLength={authMode === "signup" ? 8 : 1}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"

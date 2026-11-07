@@ -2,6 +2,7 @@ import React from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { DuctTapeBadge } from "@/components/ui-primitives/DuctTapeBadge";
+import { BoolBulPreview } from "@boolbul/sdk/react";
 
 export function HeroSection() {
   return (
@@ -86,12 +87,12 @@ export function HeroSection() {
 
           <div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3">
             {[
-              { name: "Dodo Payments", icon: "/integrations/dodo-payments.png", role: "Native gateway", highlight: true },
+              { name: "Dodo Payments", icon: "/integrations/dodo-payments.png", role: "Supported", highlight: true },
               { name: "Cursor AI", icon: "/integrations/cursor.png", role: "Setup prompts", highlight: false },
               { name: "Claude Code", icon: "/integrations/claude.png", role: "Setup prompts", highlight: false },
-              { name: "Stripe", icon: "/integrations/stripe.png", role: "Planned", highlight: false },
-              { name: "Lemon Squeezy", icon: "/integrations/lemon-squeezy.png", role: "Planned", highlight: false },
-              { name: "Paddle", icon: "/integrations/paddle.png", role: "Planned", highlight: false },
+              { name: "Stripe", icon: "/integrations/stripe.png", role: "Supported", highlight: true },
+              { name: "Lemon Squeezy", icon: "/integrations/lemon-squeezy.png", role: "Coming soon", highlight: false },
+              { name: "Paddle", icon: "/integrations/paddle.png", role: "Coming soon", highlight: false },
             ].map((tool) => (
               <div
                 key={tool.name}
@@ -113,74 +114,21 @@ export function HeroSection() {
       <div className="min-w-0 space-y-4">
         <div className="px-2 pt-1 text-center">
           <DuctTapeBadge rotate="none" className="max-w-full leading-relaxed">
-            INTERACTIVE DEMO PREVIEW
+            LIVE WIDGET — TRY IT
           </DuctTapeBadge>
         </div>
 
-        <div className="relative border-4-black bg-white p-4 shadow-brutal-xl sm:p-6">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b-2 border-pitch pb-3">
-            <span className="min-w-0 font-mono text-sm font-black uppercase tracking-wide">
-              CANCELLATION INTERCEPT
-            </span>
-            <span className="shrink-0 border border-pitch bg-lime px-2 py-1 font-mono text-xs font-bold">
-              DEMO ONLY
-            </span>
+        <div className="relative h-[620px] overflow-hidden border-4-black bg-white shadow-brutal-xl">
+          <div className="flex h-9 items-center gap-1.5 border-b-2 border-pitch bg-zinc-100 px-3" aria-hidden="true">
+            <span className="h-3 w-3 rounded-full bg-rose-400" /><span className="h-3 w-3 rounded-full bg-amber-300" /><span className="h-3 w-3 rounded-full bg-emerald-400" />
+            <span className="ml-3 truncate font-mono text-[10px] text-zinc-500">your-saas.com/settings/billing</span>
           </div>
-
-          <div className="space-y-4">
-            <div className="border-3 border-pitch bg-blush p-3">
-              <h3 className="text-base font-black uppercase leading-tight">BEFORE YOU GO...</h3>
-              <p className="mt-2 font-mono text-sm leading-relaxed text-zinc-700">
-                Example plan: <strong className="text-pitch">$49/month</strong>. Explore an offer or proceed to cancel.
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <p className="font-mono text-xs font-bold uppercase text-zinc-700">Example retention offers</p>
-              <div className="flex flex-wrap items-start justify-between gap-2 border-3 border-pitch bg-cream p-3">
-                <div className="min-w-0 space-y-1">
-                  <span className="block text-sm font-black">50% OFF</span>
-                  <span className="block font-mono text-sm text-zinc-700">Next 2 months ($24.50/mo)</span>
-                </div>
-                <span className="border border-pitch bg-lime px-2 py-1 font-mono text-xs font-bold">DISCOUNT</span>
-              </div>
-              <div className="flex flex-wrap items-start justify-between gap-2 border-3 border-pitch bg-cream p-3">
-                <div className="min-w-0 space-y-1">
-                  <span className="block text-sm font-black">30-DAY PAUSE</span>
-                  <span className="block font-mono text-sm text-zinc-700">Zero charges, keep data</span>
-                </div>
-                <span className="border border-pitch bg-white px-2 py-1 font-mono text-xs font-bold">PAUSE</span>
-              </div>
-            </div>
-
-            <Link
-              href="/demo"
-              className="flex min-h-11 w-full items-center justify-center border-3 border-pitch bg-lime px-4 py-3 text-center text-sm font-black uppercase tracking-wide text-pitch shadow-brutal hover:bg-lime-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black"
-            >
-              Try the offer demo →
-            </Link>
-
-            <div className="space-y-2 border-t-2 border-pitch pt-4">
-              <Link
-                href="/demo"
-                aria-label="Proceed to cancel in the demo"
-                className="flex min-h-11 w-full items-center justify-center border-3 border-black bg-black px-4 py-3 text-center font-mono text-sm font-black text-white hover:bg-white hover:text-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black"
-              >
-                Proceed to cancel
-              </Link>
-              <p className="text-center font-mono text-xs leading-relaxed text-zinc-700">
-                Both links open the demo. No billing changes are made.
-              </p>
-            </div>
-          </div>
+          <BoolBulPreview viewport="desktop" planPriceCents={4900} style={{ position: "absolute", inset: "36px 0 0 0" }} />
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-2 border-3 border-pitch bg-lime p-3 font-mono text-xs shadow-brutal">
-          <span className="font-bold">EXAMPLE DISCOUNT OUTCOME:</span>
-          <span className="border border-pitch bg-white px-2 py-1 font-black text-pitch">
-            $24.50/mo during the offer
-          </span>
-        </div>
+        <p className="text-center font-mono text-xs font-bold leading-relaxed text-zinc-700">
+          ↑ This is the real widget, not a screenshot. Click around — nothing is charged or cancelled.
+        </p>
       </div>
     </div>
   );

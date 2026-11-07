@@ -1,0 +1,52 @@
+{
+  "name": "@boolbul/sdk",
+  "version": "1.0.0",
+  "description": "In-app cancellation flow with exit surveys, pause and discount offers for Dodo Payments and Stripe. FTC click-to-cancel compliant, fails open in 1.5s.",
+  "license": "AGPL-3.0-only",
+  "homepage": "https://boolbul.com/docs",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/miaciastudio/Boolbul-public.git",
+    "directory": "packages/sdk"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./react": {
+      "types": "./dist/types/react.d.ts",
+      "import": "./dist/react.js"
+    },
+    "./server": {
+      "types": "./dist/types/server/index.d.ts",
+      "import": "./dist/server.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "peerDependencies": {
+    "react": ">=18"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
+  },
+  "keywords": [
+    "churn",
+    "cancellation",
+    "retention",
+    "dodo-payments",
+    "stripe",
+    "saas",
+    "ftc",
+    "click-to-cancel"
+  ]
+}

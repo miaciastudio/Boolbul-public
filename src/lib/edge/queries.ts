@@ -2,10 +2,13 @@ import type { Client, Row } from "@libsql/client/web";
 import { isIdentifier } from "../crypto/jwt";
 import { InterceptError } from "./errors";
 
+export type Gateway = "dodo_payments" | "stripe";
+
 export interface EdgeTenant {
   tenantId: string;
   publicKey: string;
   signingSecretHash: string;
+  gateway: Gateway;
 }
 
 export interface RetentionRule {
@@ -17,12 +20,17 @@ export interface RetentionRule {
 
 export type EdgeDatabase = Pick<Client, "execute">;
 
-export async function findTenant(db: EdgeDatabase, publicKey: string): Promise<EdgeTenant> {
+/** UTC month bucket (YYYY-MM) for the lazily reset deflection counter. */
+export function usageMonth(now = new Date()): string {
+  return now.toISOString().slice(0, 7);
+}
+
+export async function findTenant(db: EdgeDatabase, publicKey: string, month = usageMonth()): Promise<EdgeTenant> {
   const result = await db.execute({
-    sql: `SELECT tenant_id, public_key, signing_secret_hash FROM edge_tenants
+    sql: `SELECT tenant_id, public_key, signing_secret_hash, gateway FROM edge_tenants
           WHERE public_key = ? AND status IN ('active', 'trial')
-          AND current_month_usage < monthly_intercept_quota`,
-    args: [publicKey],
+          AND (usage_month <> ? OR current_month_usage < monthly_intercept_quota)`,
+    args: [publicKey, month],
   });
   const row = result.rows[0];
   if (!row) throw new InterceptError("tenant_unavailable", 403);
@@ -30,7 +38,19 @@ export async function findTenant(db: EdgeDatabase, publicKey: string): Promise<E
       typeof row.signing_secret_hash !== "string" || !/^[a-f0-9]{64}$/.test(row.signing_secret_hash)) {
     throw new Error("Invalid tenant configuration");
   }
-  return { tenantId: row.tenant_id, publicKey: row.public_key, signingSecretHash: row.signing_secret_hash };
+  const gateway: Gateway = row.gateway === "stripe" ? "stripe" : "dodo_payments";
+  return { tenantId: row.tenant_id, publicKey: row.public_key, signingSecretHash: row.signing_secret_hash, gateway };
+}
+
+/** Counts one deflection (an accepted, signed offer) against the monthly quota. */
+export async function incrementUsage(db: EdgeDatabase, tenantId: string, month = usageMonth()): Promise<void> {
+  await db.execute({
+    sql: `UPDATE edge_tenants SET
+          current_month_usage = CASE WHEN usage_month = ? THEN current_month_usage + 1 ELSE 1 END,
+          usage_month = ?, updated_at = CURRENT_TIMESTAMP
+          WHERE tenant_id = ?`,
+    args: [month, month, tenantId],
+  });
 }
 
 function parseRule(row: Row): RetentionRule | null {
@@ -71,6 +91,60 @@ export async function findActiveRules(db: EdgeDatabase, tenantId: string): Promi
     args: [tenantId],
   });
   return result.rows.map(parseRule).filter((rule): rule is RetentionRule => rule !== null);
+}
+
+/**
+ * Tenant + active rules in ONE round trip (the hot path of every cancellation).
+ * Same validation as findTenant/findActiveRules, half the edge->database latency.
+ */
+export async function findTenantWithRules(db: EdgeDatabase, publicKey: string, month = usageMonth()): Promise<{ tenant: EdgeTenant; rules: RetentionRule[] }> {
+  const result = await db.execute({
+    sql: `SELECT t.tenant_id, t.public_key, t.signing_secret_hash, t.gateway,
+          r.rule_id, r.trigger_condition, r.offer_type, r.discount_percentage,
+          r.discount_duration_months, r.pause_duration_days
+          FROM edge_tenants t
+          LEFT JOIN edge_retention_rules r ON r.tenant_id = t.tenant_id AND r.is_active = 1
+          WHERE t.public_key = ? AND t.status IN ('active', 'trial')
+          AND (t.usage_month <> ? OR t.current_month_usage < t.monthly_intercept_quota)
+          ORDER BY r.priority ASC, r.rule_id ASC LIMIT 100`,
+    args: [publicKey, month],
+  });
+  const first = result.rows[0];
+  if (!first) throw new InterceptError("tenant_unavailable", 403);
+  if (!isIdentifier(first.tenant_id) || !isIdentifier(first.public_key) ||
+      typeof first.signing_secret_hash !== "string" || !/^[a-f0-9]{64}$/.test(first.signing_secret_hash)) {
+    throw new Error("Invalid tenant configuration");
+  }
+  const tenant: EdgeTenant = {
+    tenantId: first.tenant_id, publicKey: first.public_key, signingSecretHash: first.signing_secret_hash,
+    gateway: first.gateway === "stripe" ? "stripe" : "dodo_payments",
+  };
+  const rules = result.rows.filter((row) => row.rule_id !== null && row.rule_id !== undefined)
+    .map(parseRule).filter((rule): rule is RetentionRule => rule !== null);
+  return { tenant, rules };
+}
+
+const TENANT_CACHE_SECONDS = 60;
+
+/**
+ * Session-open variant: serves tenant + rules from Cloudflare's per-colo cache
+ * for up to 60 s so most cancellations open without a database round trip.
+ * Only positive lookups are cached; /claim always re-reads fresh data.
+ */
+export async function findTenantWithRulesCached(db: EdgeDatabase, publicKey: string): Promise<{ tenant: EdgeTenant; rules: RetentionRule[] }> {
+  const cache = (globalThis as unknown as { caches?: { default?: Cache } }).caches?.default;
+  if (!cache) return findTenantWithRules(db, publicKey);
+  const month = usageMonth();
+  const key = new Request(`https://edge-cache.boolbul.internal/tenant/${encodeURIComponent(publicKey)}/${month}`);
+  try {
+    const hit = await cache.match(key);
+    if (hit) return await hit.json() as { tenant: EdgeTenant; rules: RetentionRule[] };
+  } catch { /* cache miss or unavailable: fall through */ }
+  const fresh = await findTenantWithRules(db, publicKey, month);
+  void cache.put(key, new Response(JSON.stringify(fresh), {
+    headers: { "Content-Type": "application/json", "Cache-Control": `max-age=${TENANT_CACHE_SECONDS}` },
+  })).catch(() => undefined);
+  return fresh;
 }
 
 export async function consumeNonce(

@@ -11,6 +11,7 @@ export type EvaluationResult<T> =
 export async function evaluateRetention<T>(
   operation: (signal: AbortSignal) => Promise<T>,
   requestSignal?: AbortSignal,
+  budget: { upstreamMs: number; deadlineMs: number } = { upstreamMs: UPSTREAM_TIMEOUT_MS, deadlineMs: FAIL_OPEN_TIMEOUT_MS },
 ): Promise<EvaluationResult<T>> {
   const controller = new AbortController();
   let upstreamTimer: ReturnType<typeof setTimeout> | undefined;
@@ -22,11 +23,11 @@ export async function evaluateRetention<T>(
       resolve({ status: "failed_open", reason: "cancelled" });
     };
     requestSignal?.addEventListener("abort", cancelRequest, { once: true });
-    upstreamTimer = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
+    upstreamTimer = setTimeout(() => controller.abort(), budget.upstreamMs);
     deadlineTimer = setTimeout(() => {
       controller.abort();
       resolve({ status: "failed_open", reason: "timeout" });
-    }, FAIL_OPEN_TIMEOUT_MS);
+    }, budget.deadlineMs);
     if (requestSignal?.aborted) cancelRequest();
   });
 

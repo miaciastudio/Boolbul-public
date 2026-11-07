@@ -1,6 +1,10 @@
 {
   "compilerOptions": {
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
@@ -18,12 +22,31 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"],
-      "@/components/*": ["./src/components/*"],
-      "@/backend/*": ["./src/backend/*"]
-    }
+      "@boolbul/sdk": ["./packages/sdk/src/index.ts"],
+      "@boolbul/sdk/react": ["./packages/sdk/src/react.tsx"],
+      "@boolbul/sdk/server": ["./packages/sdk/src/server/index.ts"],
+      "@sdk/*": ["./packages/sdk/src/*"],
+      "@/*": [
+        "./src/*"
+      ],
+      "@/components/*": [
+        "./src/components/*"
+      ],
+      "@/backend/*": [
+        "./src/backend/*"
+      ]
+    },
+    "target": "ES2017"
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    ".open-next",
+    ".wrangler"
+  ]
 }
-

@@ -11,14 +11,15 @@ const DOCS_NAV = [
     category: "GETTING STARTED",
     items: [
       { href: "/docs", label: "Overview & Architecture" },
-      { href: "/docs/quickstart", label: "5-Min Quickstart" },
+      { href: "/docs/quickstart", label: "Quickstart (10 min)" },
     ],
   },
   {
     category: "INTEGRATION",
     items: [
-      { href: "/docs/client-sdk", label: "Client SDK & Modal" },
-      { href: "/docs/webhooks", label: "Billing Webhooks & Dodo" },
+      { href: "/docs/client-sdk", label: "Client SDK" },
+      { href: "/docs/server", label: "Server SDK: Dodo & Stripe" },
+      { href: "/docs/mobile", label: "Mobile apps" },
     ],
   },
   {
@@ -119,11 +120,9 @@ export default function DocsLayout({ children }: { children: React.ReactNode }) 
           </nav>
 
           <div className="pt-3 border-t-2 border-pitch text-[11px] font-mono text-zinc-600 space-y-1">
-            <div className="flex items-center gap-1.5 font-bold text-pitch">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-ping" />
-              <span>Edge API: 100% Operational</span>
-            </div>
-            <p>Turso LibSQL edge replicas deployed in 6 global regions.</p>
+            <p className="font-bold text-pitch">Supported gateways</p>
+            <p>Dodo Payments · Stripe</p>
+            <p className="text-zinc-500">Coming soon: Paddle, Lemon Squeezy, Polar, Chargebee</p>
           </div>
         </aside>
 

@@ -30,7 +30,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.8,
     },
     {
-      url: `${baseUrl}/docs/webhooks`,
+      url: `${baseUrl}/docs/server`,
+      lastModified: currentDate,
+      changeFrequency: "weekly",
+      priority: 0.8,
+    },
+    {
+      url: `${baseUrl}/docs/mobile`,
       lastModified: currentDate,
       changeFrequency: "weekly",
       priority: 0.8,

@@ -1,23 +1,39 @@
 # BoolBul (https://boolbul.com)
-> Lightweight in-app cancellation interceptor & exit telemetry engine for indie SaaS ($500 - $25k MRR).
+> In-app cancellation flow for indie SaaS: exit survey, pause and discount offers, and an always-visible cancel link. Supports Dodo Payments and Stripe. Paddle, Lemon Squeezy, Polar and Chargebee are coming soon.
 
-## Overview
-BoolBul intercepts churning SaaS users directly inside the application before they reach Stripe/Dodo billing portals. It evaluates dynamic exit pauses, discounts, and feedback surveys on Turso LibSQL Edge (<10ms globally) with a strict 1500ms fail-open SLA and 0% dark patterns.
+## How it works
+1. Your cancel button calls `BoolBul.open(...)` (script tag or `@boolbul/sdk`).
+2. The customer answers a one-tap exit survey and sees reason-matched offers (discount or pause).
+3. If they accept, the edge signs a 5-minute single-use `offerJwt` with YOUR signing secret.
+4. Your server verifies it with `@boolbul/sdk/server` and applies it with Dodo Payments or Stripe. BoolBul never sees gateway keys.
+5. If BoolBul doesn't answer within 1.5s, `onCancel` runs (fail-open). The cancel link is on every screen (FTC 16 CFR 425 / California ARL).
 
-## Core Capabilities
-- In-app exit deflection modal (3 themes: Neo-Brutalist, Minimal Slate, Midnight OLED)
-- Turso LibSQL Edge rules evaluation (<10ms)
-- Dodo Payments & Stripe automated subscription pause & discount execution
-- Tamper-proof HMAC-SHA256 & JWT token verification
-- 100% FTC Click-to-Cancel (16 CFR Part 425) & California ARL compliance
+## Client
+- Script: `<script src="https://boolbul.com/v1/boolbul.js"></script>` then `BoolBul.open({ publicKey, customerId, subscriptionId, mrrCents, onOfferAccepted, onCancel, onDismiss })`
+- npm: `@boolbul/sdk` (`open`, `preview`), `@boolbul/sdk/react` (`useBoolBul`, `BoolBulPreview`)
+- `onOfferAccepted({ offerJwt, offerType: "discount"|"pause", offerValue, discountDurationMonths, reasonId })` — POST offerJwt to your server; throw to show a retry.
+- `onCancel({ reasonId, comment, failedOpen })` — run your normal cancellation.
+- reasonId values equal Dodo `cancellation_feedback` and Stripe `cancellation_details.feedback`: too_expensive, unused, missing_features, switched_service, customer_service, low_quality, too_complex, other.
 
-## API & Client SDK
-- Web Client Hook: `openRetentionModal({ publicKey, customerId, subscriptionId, onCancelConfirmed, onOfferAccepted })`
-- Edge Config: `GET https://boolbul.com/api/v1/widget-config/[publicKey]` (Cloudflare CDN cached, s-maxage=3600)
-- Edge Init: `POST https://boolbul.com/api/v1/intercept/init`
-- Edge Claim: `POST https://boolbul.com/api/v1/intercept/claim`
-- Webhook Ingest: `POST https://boolbul.com/api/webhooks/dodo`
+## Server (`@boolbul/sdk/server`, zero dependencies)
+- `redeemOffer(offerJwt, { signingSecret, expected: { subscriptionId }, seenNonce?, gateway })`
+- gateway: `{ gateway: "dodo_payments", apiKey, environment: "test_mode"|"live_mode" }` or `{ gateway: "stripe", secretKey }`
+- `cancelSubscription(subscriptionId, gateway, { reasonId, comment, immediately? })`
+- Dodo pause = move next_billing_date (or native status "paused"); Stripe pause = pause_collection with resumes_at. Discounts = single-use code/coupon.
 
-## Full Developer Spec
-Read https://boolbul.com/llms-full.txt for complete schemas, TypeScript interfaces, and integration prompts.
+## Mobile
+- WebView URL: `https://boolbul.com/w/<publicKey>?customerId=…&subscriptionId=…&mrrCents=…`
+- Messages: `boolbul:offer_accepted` (offer.offerJwt), `boolbul:cancel` (details), `boolbul:dismiss` via ReactNativeWebView, webkit.messageHandlers.boolbul, BoolBulNative channel, flutter_inappwebview, or parent.postMessage.
 
+## Public endpoints
+- `GET /api/v1/widget-config/<publicKey>` — widget design (60s CDN cache)
+- `POST /api/v1/intercept/init` — open a session
+- `POST /api/v1/intercept/claim` — sign an accepted offer
+- `POST /api/v1/intercept/outcome` — shown / cancelled beacon
+
+## Docs
+- https://boolbul.com/docs/quickstart
+- https://boolbul.com/docs/client-sdk
+- https://boolbul.com/docs/server
+- https://boolbul.com/docs/mobile
+- https://boolbul.com/docs/ftc-compliance

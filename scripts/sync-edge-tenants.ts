@@ -14,7 +14,7 @@ async function main(): Promise<void> {
   try {
     while (true) {
       const url = new URL("/rest/v1/tenants", supabaseUrl);
-      url.searchParams.set("select", "id,public_key,signing_secret");
+      url.searchParams.set("select", "id,public_key,signing_secret,gateway");
       url.searchParams.set("order", "id.asc");
       url.searchParams.set("limit", "500");
       url.searchParams.set("offset", String(offset));
@@ -34,10 +34,11 @@ async function main(): Promise<void> {
         const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value.signing_secret));
         const hash = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
         return {
-          sql: `INSERT INTO edge_tenants (tenant_id, public_key, signing_secret_hash) VALUES (?, ?, ?)
+          sql: `INSERT INTO edge_tenants (tenant_id, public_key, signing_secret_hash, gateway) VALUES (?, ?, ?, ?)
                 ON CONFLICT(tenant_id) DO UPDATE SET public_key = excluded.public_key,
-                signing_secret_hash = excluded.signing_secret_hash, updated_at = CURRENT_TIMESTAMP`,
-          args: [value.id, value.public_key, hash],
+                signing_secret_hash = excluded.signing_secret_hash, gateway = excluded.gateway,
+                updated_at = CURRENT_TIMESTAMP`,
+          args: [value.id, value.public_key, hash, "gateway" in value && value.gateway === "stripe" ? "stripe" : "dodo_payments"],
         };
       }));
       await db.batch(statements, "write");

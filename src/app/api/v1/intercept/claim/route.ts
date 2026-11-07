@@ -1,15 +1,21 @@
 import { errors } from "jose";
 import { createTursoClient } from "@/backend/turso-edge/client";
 import { createOfferJwt, isIdentifier, OFFER_TTL_SECONDS } from "@/lib/crypto/jwt";
+import { runInBackground } from "@/lib/edge/background";
 import { InterceptError } from "@/lib/edge/errors";
 import { evaluationResponse, preflightResponse, readJsonObject } from "@/lib/edge/http";
 import { verifyInitToken } from "@/lib/edge/init-token";
-import { consumeNonce, findActiveRules, findTenant } from "@/lib/edge/queries";
+import { recordLedgerEvent } from "@/lib/edge/ledger";
+import { consumeNonce, findTenantWithRules, incrementUsage } from "@/lib/edge/queries";
 import { evaluateRetention } from "@/lib/edge/retention-evaluator";
 import { getTenantSigningSecret } from "@/lib/edge/tenant-secret";
+import { isExitReasonId } from "@/lib/retention/reasons";
 
-export const runtime = "edge";
 export const dynamic = "force-dynamic";
+
+// The customer is explicitly waiting on "Claim", so signing gets a larger budget
+// than the 1.5 s fail-open session open. The cancel link stays usable meanwhile.
+const CLAIM_BUDGET = { upstreamMs: 4500, deadlineMs: 5000 };
 
 export function OPTIONS() {
   return preflightResponse();
@@ -19,6 +25,7 @@ export async function POST(request: Request) {
   const result = await evaluateRetention(async (signal) => {
     const body = await readJsonObject(request, signal);
     const { initToken, selection } = body;
+    const reasonId = isExitReasonId(body.reasonId) ? body.reasonId : null;
     if (typeof initToken !== "string" || !initToken.length || initToken.length > 12000 || !isIdentifier(selection)) {
       throw new InterceptError("invalid_request", 400);
     }
@@ -33,9 +40,8 @@ export async function POST(request: Request) {
     if (!context.ruleIds.includes(selection)) throw new InterceptError("offer_unavailable", 403);
     const db = createTursoClient(signal);
     try {
-      const tenant = await findTenant(db, context.publicKey);
+      const { tenant, rules } = await findTenantWithRules(db, context.publicKey);
       if (tenant.tenantId !== context.tenantId) throw new InterceptError("offer_unavailable", 403);
-      const rules = await findActiveRules(db, tenant.tenantId);
       const rule = rules.find((candidate) => candidate.ruleId === selection);
       if (!rule || rule.offerType === "survey_only") throw new InterceptError("offer_unavailable", 403);
       const secret = await getTenantSigningSecret(tenant, signal);
@@ -50,10 +56,22 @@ export async function POST(request: Request) {
       }, secret);
       signal.throwIfAborted();
       await consumeNonce(db, { ...context, exp: Math.floor(Date.now() / 1000) + OFFER_TTL_SECONDS }, "claim");
-      return { failOpen: false, offerJwt };
+      // A signed, single-use claim is the only event that counts as a rescue.
+      // Same connection as the nonce lock (closed below), so it is awaited; a failed
+      // counter must never cost the customer their already-signed offer.
+      await incrementUsage(db, tenant.tenantId).catch(() => undefined);
+      runInBackground(recordLedgerEvent({
+        tenantId: tenant.tenantId, sessionId: context.nonce,
+        customerId: context.customerId, subscriptionId: context.subscriptionId,
+        gateway: context.gateway, mrrCents: context.mrrCents,
+        status: rule.offerType === "discount" ? "rescued_discount" : "rescued_pause",
+        offerType: rule.offerType, exitReason: reasonId,
+      }));
+      return { failOpen: false, offerJwt, offerType: rule.offerType, offerValue: rule.offerValue,
+        discountDurationMonths: rule.offerType === "discount" ? rule.discountDurationMonths : undefined };
     } finally {
       db.close();
     }
-  }, request.signal);
+  }, request.signal, CLAIM_BUDGET);
   return evaluationResponse(result);
 }
