@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { DuctTapeBadge } from "@/components/ui-primitives/DuctTapeBadge";
 import { BoolBulPreview } from "@boolbul/sdk/react";
+import { ProductHuntBadge } from "@/components/website-pages/ProductHuntBadge";
 
 export function HeroSection() {
   return (
@@ -48,6 +49,13 @@ export function HeroSection() {
               <span className="text-zinc-700">Keep gateway keys on your server</span>
             </div>
           </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <ProductHuntBadge />
+          <span className="font-mono text-xs font-bold leading-relaxed text-zinc-700">
+            We&apos;re live on Product Hunt today — an upvote helps a ton ↑
+          </span>
         </div>
 
         <div className="flex items-start gap-3 border-3 border-dashed border-pitch bg-white/80 p-4 shadow-brutal-sm sm:gap-4">

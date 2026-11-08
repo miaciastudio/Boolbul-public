@@ -46,7 +46,7 @@ export const organizationLd = {
   url: SITE_URL,
   logo: { "@type": "ImageObject", url: `${SITE_URL}/brand/logo.png` },
   email: "hello@boolbul.com",
-  sameAs: ["https://github.com/miaciastudio/Boolbul-public", "https://www.npmjs.com/package/@boolbul/sdk", "https://twitter.com/miaciastudio"],
+  sameAs: ["https://www.producthunt.com/products/boolbul", "https://github.com/miaciastudio/Boolbul-public","https://www.npmjs.com/package/@boolbul/sdk", "https://twitter.com/miaciastudio"],
 };
 
 export const websiteLd = {
@@ -76,6 +76,7 @@ export const softwareApplicationLd = {
     "Always-visible one-click cancel link, WCAG AA themes",
   ],
   softwareVersion: "1.0.0",
+  sameAs: ["https://www.producthunt.com/products/boolbul", "https://www.npmjs.com/package/@boolbul/sdk"],
   publisher: { "@id": `${SITE_URL}/#organization` },
   offers: [
     { "@type": "Offer", name: "Invite-only beta (first 100 SaaS)", price: "0", priceCurrency: "USD", description: "Pro free for 3 months for approved beta founders. No credit card." },

@@ -4,6 +4,12 @@
 
 [Live demo](https://boolbul.com/demo) · [Docs](https://boolbul.com/docs) · [Quickstart](https://boolbul.com/docs/quickstart) · Open core, AGPL-3.0
 
+<a href="https://www.producthunt.com/products/boolbul?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-boolbul" target="_blank" rel="noopener noreferrer"><img alt="BoolBul - In-app edge cancellation flow to save churning SaaS MRR | Product Hunt" width="250" height="54" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1308552&theme=light&t=1794125282847"></a>
+
+### ▶️ See it in 30 seconds
+
+[![BoolBul in 30 seconds — watch on YouTube](https://i.ytimg.com/vi/XsoXoD3kbAc/maxresdefault.jpg)](https://www.youtube.com/watch?v=XsoXoD3kbAc)
+
 ---
 
 ## Why

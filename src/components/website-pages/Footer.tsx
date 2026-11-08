@@ -1,11 +1,12 @@
 import Image from "next/image";
 import Link from "next/link";
+import { ProductHuntBadge } from "@/components/website-pages/ProductHuntBadge";
 
 const COLUMNS = [
   { title: "Product", links: [["Pricing", "/pricing"], ["Live demo", "/demo"], ["Claim 3 months free", "/login?mode=apply"], ["Sign in", "/login"]] },
   { title: "Developers", links: [["Docs", "/docs"], ["Quickstart", "/docs/quickstart"], ["Client SDK", "/docs/client-sdk"], ["Server adapters", "/docs/server-adapters"], ["Mobile apps", "/docs/mobile-apps"]] },
   { title: "Compare & learn", links: [["vs Stripe customer portal", "/vs/stripe-portal"], ["vs Churnkey", "/vs/churnkey"], ["FTC click-to-cancel guide", "/compliance/ftc-click-to-cancel"]] },
-  { title: "Open source", links: [["GitHub", "https://github.com/miaciastudio/Boolbul-public"], ["npm @boolbul/sdk", "https://www.npmjs.com/package/@boolbul/sdk"], ["llms.txt", "/llms.txt"], ["hello@boolbul.com", "mailto:hello@boolbul.com"]] },
+  { title: "Open source", links: [["GitHub", "https://github.com/miaciastudio/Boolbul-public"], ["Product Hunt", "https://www.producthunt.com/products/boolbul"],["npm @boolbul/sdk", "https://www.npmjs.com/package/@boolbul/sdk"], ["llms.txt", "/llms.txt"], ["hello@boolbul.com", "mailto:hello@boolbul.com"]] },
 ] as const;
 
 export function Footer() {
@@ -32,6 +33,7 @@ export function Footer() {
           <span className="font-bold">BOOLBUL.COM</span>
           <span className="text-zinc-500">— In-app cancellation flows for Dodo Payments & Stripe</span>
         </div>
+        <ProductHuntBadge />
         <span className="text-zinc-600">© {new Date().getFullYear()} BoolBul · Open core (AGPL-3.0)</span>
       </div>
     </footer>
